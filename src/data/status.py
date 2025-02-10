@@ -75,9 +75,10 @@ class Status:
             return False
      
     def refresh_next_season(self):
-        debug.info("Updating next season info")
-        self.season_info = current_season_info()['seasons'][0]
-        self.next_season_info = next_season_info()['seasons'][0]
+        debug.info(f"Updating next season info")
+        self.season_info = current_season_info()[-1]
+        self.next_season_info = next_season_info().json()
+        # debug.info(f"{self.next_season_info['regularSeasonStartDate']}")
         # Make sure that the next_season_info is not an empty list, if it is, make next_season = to current season
         
         if not self.next_season_info:

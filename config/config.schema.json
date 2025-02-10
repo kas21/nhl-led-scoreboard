@@ -193,7 +193,6 @@
                             "Canadiens",
                             "Canucks",
                             "Capitals",
-                            "Coyotes",
                             "Devils",
                             "Ducks",
                             "Flames",
@@ -216,7 +215,8 @@
                             "Senators",
                             "Sharks",
                             "Stars",
-                            "Wild"
+                            "Wild",
+                            "Utah"
                         ]
                     }
                 },

@@ -5,7 +5,7 @@ import uuid
 from sbio.screensaver import screenSaver
 
 
-AVAIL_BOARDS = ["team_summary","standings","scoreticker","seriesticker","clock","weather","wxalert","pbdisplay","wxforecast","screensaver","stanley_cup_champions","christmas"]
+AVAIL_BOARDS = ["team_summary","standings","scoreticker","seriesticker","clock","weather","wxalert","pbdisplay","wxforecast","screensaver","stanley_cup_champions","christmas","seasoncountdown","ovi_tracker","player_stats","stats_leaders"]
 class sbMQTT(object):
     def on_connect(self,client,userdata,flags,rc):
         if rc == 0:
@@ -58,12 +58,12 @@ class sbMQTT(object):
         
         if msg.topic == "{0}/control/screensaver".format(self.data.config.mqtt_main_topic):
             if msg.payload == "on":
-                if self.screensaver != None:
+                if self.screensaver is not None:
                     self.screensaver.runSaver()
                 else:
                     debug.error("MQTT: Screen saver not enabled")
             else:
-                if self.screensaver != None:
+                if self.screensaver is not None:
                     self.screensaver.stopSaver()
                 else:
                     debug.error("MQTT: Screen saver not enabled")

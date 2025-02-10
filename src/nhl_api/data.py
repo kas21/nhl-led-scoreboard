@@ -19,8 +19,8 @@ TEAM_URL = "https://api.nhle.com/stats/rest/en/team"
 PLAYER_URL = '{0}player/{1}/landing'
 OVERVIEW_URL = BASE_URL + 'gamecenter/{0}/play-by-play'
 STATUS_URL = BASE_URL + 'gameStatus'
-CURRENT_SEASON_URL = BASE_URL + 'seasons/current'
-NEXT_SEASON_URL = BASE_URL + 'seasons/{0}'
+CURRENT_SEASON_URL = BASE_URL + 'season'
+NEXT_SEASON_URL = BASE_URL + 'schedule/now'
 STANDINGS_URL = BASE_URL + 'standings'
 STANDINGS_WILD_CARD = STANDINGS_URL + '/wildCardWithLeaders'
 PLAYOFF_URL = BASE_URL + "tournaments/playoffs?expand=round.series,schedule.game.seriesSummary&season={}"
@@ -132,18 +132,18 @@ def get_current_season():
         raise ValueError(e)
     
 def get_next_season():
-    # Create the next seasonID from the current year and curent year +1 eg: 20232024 is seasonID for 2023-2024 season
-    # This will return an empty set for seasons data if the seasonID has nothing, a 200 response will always occur
-    current_year = date.today().year
-    next_year = current_year + 1
+     # Create the next seasonID from the current year and curent year +1 eg: 20232024 is seasonID for 2023-2024 season
+     # This will return an empty set for seasons data if the seasonID has nothing, a 200 response will always occur
+     #current_year = date.today().year
+     #next_year = current_year + 1
     
-    nextseasonID="{0}{1}".format(current_year,next_year)
+#     nextseasonID="{0}{1}".format(current_year,next_year)
     
-    try:
-        data = requests.get(NEXT_SEASON_URL.format(nextseasonID), timeout=REQUEST_TIMEOUT)
-        return data
-    except requests.exceptions.RequestException as e:
-        raise ValueError(e)
+     try:
+         data = requests.get(NEXT_SEASON_URL, timeout=REQUEST_TIMEOUT)
+         return data
+     except requests.exceptions.RequestException as e:
+         raise ValueError(e)
 
 
 def get_standings():

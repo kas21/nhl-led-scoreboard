@@ -1,7 +1,5 @@
-from env_canada import ECWeather
 import debug
 import datetime
-from time import sleep
 import asyncio
 
 class ecWxAlerts(object):
@@ -41,20 +39,16 @@ class ecWxAlerts(object):
         # No alerts, the dictionary still comes back with empty values for 
         # warning, watch, advisory, statements and endings
         # Currently don't do anything with a statement
-        #debug.info(curr_alerts)
+        # debug.info(curr_alerts)
 
         #Find the latest date in the curr_alerts
 
-
-        try:
-            len_warn = len(curr_alerts.get("warnings").get("value"))
-            len_watch = len(curr_alerts.get("watches").get("value"))
-            len_advisory = len(curr_alerts.get("advisories").get("value"))
-        except:
-            len_warn = 0
-            len_watch = 0
-            len_advisory = 0
-
+        
+        len_warn = len(curr_alerts.get("warnings").get("value","0"))
+        len_watch = len(curr_alerts.get("watches").get("value","0"))
+        len_advisory = len(curr_alerts.get("advisories").get("value","0"))
+        debug.info(f"Warnings: {len_warn} Watches: {len_watch} Advisories: {len_advisory}")
+        
         num_alerts = len_warn + len_watch + len_advisory
 
         if num_alerts > 0:
@@ -67,7 +61,7 @@ class ecWxAlerts(object):
             wx_num_watch = len(curr_alerts.get("watches").get("value","0"))
             wx_num_advisory = len(curr_alerts.get("advisories").get("value","0"))
 
-            wx_total_alerts = wx_num_endings + wx_num_warning + wx_num_watch + wx_num_advisory
+            #wx_total_alerts = wx_num_endings + wx_num_warning + wx_num_watch + wx_num_advisory
             warn_datetime = 0
             watch_datetime = 0
             advisory_datetime = 0

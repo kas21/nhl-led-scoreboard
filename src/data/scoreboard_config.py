@@ -157,15 +157,21 @@ class ScoreboardConfig:
         self.standing_type = json["boards"]["standings"]["standing_type"]
         self.preferred_divisions = json["boards"]["standings"]["divisions"]
         self.preferred_conference = json["boards"]["standings"]["conference"]
-        self.wildcard_limit = json["boards"]["standings"]["wildcard_limit"]
+        #self.wildcard_limit = json["boards"]["standings"]["wildcard_limit"]
 
         # Player Stats
-        self.player_stats_rotation_rate = json["boards"]["player_stats"]["rotation_rate"]
-        self.player_stats_players = json["boards"]["player_stats"]["players"]
+        try:
+            self.player_stats_rotation_rate = json["boards"]["player_stats"]["rotation_rate"]
+            self.player_stats_players = json["boards"]["player_stats"]["players"]
+        except KeyError:
+            pass
 
         # Stats Leaders
-        self.stats_leaders_rotation_rate = json["boards"]["stats_leaders"]["rotation_rate"]
-        self.stats_leaders_categories = json["boards"]["stats_leaders"]["categories"]
+        try:
+            self.stats_leaders_rotation_rate = json["boards"]["stats_leaders"]["rotation_rate"]
+            self.stats_leaders_categories = json["boards"]["stats_leaders"]["categories"]
+        except KeyError:
+            pass
 
         # Clock
         self.clock_board_duration = json["boards"]["clock"]["duration"]
@@ -177,7 +183,7 @@ class ScoreboardConfig:
 
         # Fonts
         self.layout = Layout()
-
+        
         # load colors 
         self.team_colors = Color(self.__get_config(
             "colors/teams"
@@ -185,7 +191,7 @@ class ScoreboardConfig:
 
         self.config = Config(size)
 
-        if args.testScChampions != None:
+        if args.testScChampions is not None:
             self.testScChampions = args.testScChampions
 
         if args.testing_mode :

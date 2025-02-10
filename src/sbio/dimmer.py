@@ -1,9 +1,7 @@
 import ephem
 import debug
-from python_tsl2591 import tsl2591
-from datetime import datetime,date,time
+from datetime import datetime
 from utils import timeValidator
-from time import sleep
 
 class Dimmer(object):
     def __init__(self, data, matrix,scheduler):
@@ -38,11 +36,12 @@ class Dimmer(object):
             data.config.dimmer_sunrise_brightness = 100
 
         if data.config.dimmer_source == "hardware":
+            from python_tsl2591 import tsl2591 # type: ignore
             try:
                 self.tsl = tsl2591()  # initialize
                 self.luxsensor = True
-            except:
-                debug.error("Light sensor not found or not connected, falling back to software mode")
+            except Exception as e:
+                debug.error(f"Error: {e} Light sensor not found or not connected, falling back to software mode")
                 self.luxsensor = False
                 # Fall back to using software mode
                 self.data.config.dimmer_source = "software"

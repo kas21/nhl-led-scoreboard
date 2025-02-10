@@ -3,7 +3,7 @@ import argparse
 import os
 import diskcache as dc
 import debug
-from datetime import datetime, timezone, time
+from datetime import datetime, timezone
 import regex
 import math
 from geopy.geocoders import Nominatim
@@ -238,6 +238,7 @@ def args():
 
 
 def led_matrix_options(args):
+    
     print(driver.mode)
     if driver.is_hardware():
         from rgbmatrix import RGBMatrixOptions

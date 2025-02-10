@@ -1,8 +1,6 @@
-from env_canada import ECWeather
 import debug
 import datetime
 import asyncio
-from time import sleep
 from api.weather.wx_utils import cadhumidex, wind_chill, get_csv, degrees_to_direction, temp_f, wind_mph
 
 class ecWxWorker(object):
@@ -64,17 +62,17 @@ class ecWxWorker(object):
             #Make sure we have a value.  Sometimes, the feed will not contain a value
             try:
                 curr_temp = curr_cond.get("temperature").get("value",{})
-            except:
+            except:  # noqa: E722
                 curr_temp = None
                 self.data.wx_updated = False
 
             try:    
                 curr_humidity = str(curr_cond.get("humidity").get("value",{}))
-            except:
+            except:  # noqa: E722
                 curr_humidity = None
                 self.data.wx_updated = False
 
-            if curr_humidity == None:
+            if curr_humidity is None:
                 curr_humidity = "0"
                 wx_humidity = "N/A"
             else:
@@ -82,10 +80,10 @@ class ecWxWorker(object):
 
             try:
                 icon_code = curr_cond.get("icon_code").get("value","90")
-            except:
+            except:  # noqa: E722
                 icon_code = None
 
-            if icon_code == None:
+            if icon_code is None:
                 wx_icon = '\uf07b'
             else:
                 #Get condition and icon from dictionary
@@ -98,18 +96,18 @@ class ecWxWorker(object):
                 
             try:    
                 wx_summary = curr_cond.get("condition").get("value","N/A")
-            except:
+            except:  # noqa: E722
                 wx_summary = None
 
-            if wx_summary == None:
+            if wx_summary is None:
                 wx_summary = "Curr Cond N/A"
 
             try:
                 curr_dewpoint = curr_cond.get("dewpoint").get("value","0.0")
-            except:
+            except:  # noqa: E722
                 curr_dewpoint = None
 
-            if curr_dewpoint == None:
+            if curr_dewpoint is None:
                 curr_dewpoint = 0.0
             else:
                 curr_dewpoint = float(curr_dewpoint)
@@ -124,20 +122,20 @@ class ecWxWorker(object):
 
             try:
                 wind_bearing = curr_cond.get("wind_bearing").get("value","0")
-            except:
+            except:  # noqa: E722
                 wind_bearing = None
 
-            if wind_bearing == None:
+            if wind_bearing is None:
                 wind_bearing = "0"
                 
             winddir = degrees_to_direction(float(wind_bearing))
 
             try:
                 wind_speed = curr_cond.get("wind_speed").get("value","0.0")
-            except:
+            except:  # noqa: E722
                 wind_speed = None
 
-            if wind_speed == None:
+            if wind_speed is None:
                 wind_speed = "0.0"
                 
             curr_windspeed = float(wind_speed)
@@ -149,10 +147,10 @@ class ecWxWorker(object):
             
             try:
                 curr_windgust = curr_cond.get("wind_gust").get("value","0.0")
-            except:
+            except:  # noqa: E722
                 curr_windgust = None
 
-            if curr_windgust != None:
+            if curr_windgust is not None:
                 curr_windgust = float(curr_cond.get("wind_gust").get("value","0.0"))
                 if self.data.config.weather_units == "imperial":
                     curr_windgust = round(wind_mph(curr_windgust),1)
@@ -163,10 +161,10 @@ class ecWxWorker(object):
 
             try:
                 wx_pressure = str(round(float(curr_cond.get("pressure").get("value","0")),1) * 10) + " " + self.data.wx_units[4]
-            except:
+            except:  # noqa: E722
                 wx_pressure = "N/A"
 
-            if curr_temp != None:
+            if curr_temp is not None:
                 curr_temp = float(curr_cond["temperature"]["value"])
                 check_windchill = 10.0
                 if self.data.config.weather_units == "imperial":
@@ -195,11 +193,11 @@ class ecWxWorker(object):
                         break
                     else:
                         wx_tendency = '\uf07b'
-            except:
+            except:  # noqa: E722
                 wx_tendency = '\uf07b'
                 
             try:
-                if curr_cond.get("visibility").get("value","24") == None:
+                if curr_cond.get("visibility").get("value","24") is None:
                     if self.data.config.weather_units == "imperial":
                         wx_visibility = "14.9 mi"
                     else:
@@ -210,7 +208,7 @@ class ecWxWorker(object):
                         wx_visibility = str(imp_visibility) + " mi"
                     else:
                         wx_visibility = curr_cond.get("visibility").get("value","24") + " " + curr_cond.get("visibility").get("unit","km")
-            except:
+            except:  # noqa: E722
                 if self.data.config.weather_units == "imperial":
                     wx_visibility = "14.9 mi"
                 else:

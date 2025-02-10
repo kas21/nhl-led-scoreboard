@@ -1,6 +1,5 @@
 import nhl_api.game
 import nhl_api.info
-import datetime
 
 from nhlpy import NHLClient
 

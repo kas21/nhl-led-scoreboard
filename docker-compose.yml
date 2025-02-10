@@ -1,12 +1,12 @@
 services:
   nhl-led-scoreboard:
-    image: nhl-led-scoreboard-dev
+    image: nhl-led-scoreboard
     build:
       context: .
       dockerfile: ./Dockerfile
     environment:
-      - TZ=America/New_York
+      - TZ=America/Winnipeg
     ports:
       - 8888:8888
     volumes:
-      - .:/app
+      - './config/config.json:/app/config/config.json'

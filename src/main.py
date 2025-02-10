@@ -1,13 +1,12 @@
 import sys
-import time
 import driver
-from datetime import datetime, timedelta
+from sbio.screensaver import screenSaver
+from sbio.dimmer import Dimmer
 
-
-from apscheduler.events import EVENT_ALL, EVENT_JOB_ERROR, EVENT_JOB_MISSED
+from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_MISSED
 from data.scoreboard_config import ScoreboardConfig
 from renderer.main import MainRenderer
-#from rgbmatrix import RGBMatrix, RGBMatrixOptions
+
 from utils import args, led_matrix_options, stop_splash_service, scheduler_event_listener, sb_cache
 from data.data import Data
 import queue
@@ -20,20 +19,17 @@ from api.weather.nwsAlerts import nwsWxAlerts
 from api.weather.wxForecast import wxForecast
 import asyncio
 from env_canada import ECWeather
-from renderer.matrix import Matrix
 from update_checker import UpdateChecker
 import tzlocal
-from apscheduler.events import EVENT_ALL, EVENT_JOB_ERROR, EVENT_JOB_MISSED
 from apscheduler.schedulers.background import BackgroundScheduler
 from renderer.loading_screen import Loading
 import debug
-import os
 from rich.traceback import install
 install(show_locals=True) 
 
 SCRIPT_NAME = "NHL-LED-SCOREBOARD"
 
-SCRIPT_VERSION = "1.9.0"
+SCRIPT_VERSION = "2025.2.0"
 
 # Conditionally load the appropriate driver classes and set the global driver mode based on command line flags
 
@@ -43,12 +39,12 @@ if args().emulated:
     driver.mode = driver.DriverMode.SOFTWARE_EMULATION
 else:
     try:
-        from rgbmatrix import RGBMatrix, RGBMatrixOptions
+        from rgbmatrix import RGBMatrix, RGBMatrixOptions # type: ignore
         from utils import stop_splash_service
 
         driver.mode = driver.DriverMode.HARDWARE
     except ImportError:
-        from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
+        from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions  # noqa: F401
 
         driver.mode = driver.DriverMode.SOFTWARE_EMULATION
 
@@ -62,10 +58,9 @@ def run():
     # Check for led configuration arguments
     matrixOptions = led_matrix_options(commandArgs)
     matrixOptions.drop_privileges = False
-
+    
     # Initialize the matrix
     matrix = Matrix(RGBMatrix(options = matrixOptions))
-
      #Riff to add loading screen here
     loading = Loading(matrix)
     loading.render()
@@ -75,14 +70,15 @@ def run():
 
     # This data will get passed throughout the entirety of this program.
     # It initializes all sorts of things like current season, teams, helper functions
+    
     data = Data(config)
 
     #If we pass the logging arguments on command line, override what's in the config.json, else use what's in config.json (color will always be false in config.json)
-    if commandArgs.logcolor and commandArgs.loglevel != None:
+    if commandArgs.logcolor and commandArgs.loglevel is not None:
         debug.set_debug_status(config,logcolor=commandArgs.logcolor,loglevel=commandArgs.loglevel)
-    elif not commandArgs.logcolor and commandArgs.loglevel != None:
+    elif not commandArgs.logcolor and commandArgs.loglevel is not None:
         debug.set_debug_status(config,loglevel=commandArgs.loglevel)
-    elif commandArgs.logcolor and commandArgs.loglevel == None:
+    elif commandArgs.logcolor and commandArgs.loglevel is None:
         debug.set_debug_status(config,logcolor=commandArgs.logcolor,loglevel=config.loglevel)
     else:
         debug.set_debug_status(config,loglevel=config.loglevel)
@@ -123,7 +119,7 @@ def run():
         if data.config.weather_data_feed.lower() == "ec":
             ecWxWorker(data,scheduler)
         elif data.config.weather_data_feed.lower() == "owm":
-            owmweather = owmWxWorker(data,scheduler)
+            owmWxWorker(data,scheduler)
         else:
             debug.error("No valid weather providers selected, skipping weather feed")
             data.config.weather_enabled = False
@@ -131,9 +127,9 @@ def run():
 
     if data.config.wxalert_show_alerts:
         if data.config.wxalert_alert_feed.lower() == "ec":
-            ecalert = ecWxAlerts(data,scheduler,sleepEvent)
+            ecWxAlerts(data,scheduler,sleepEvent)
         elif data.config.wxalert_alert_feed.lower() == "nws":
-            nwsalert = nwsWxAlerts(data,scheduler,sleepEvent)
+            nwsWxAlerts(data,scheduler,sleepEvent)
         else:
             debug.error("No valid weather alerts providers selected, skipping alerts feed")
             data.config.weather_show_alerts = False
@@ -145,30 +141,28 @@ def run():
     #
     if commandArgs.updatecheck:
         data.UpdateRepo = commandArgs.updaterepo
-        checkupdate = UpdateChecker(data,scheduler,commandArgs.ghtoken)
+        UpdateChecker(data,scheduler,commandArgs.ghtoken)
 
     # If the driver is running on actual hardware, these files contain libs that should be installed.
     # For other platforms, they probably don't exist and will crash.
     screensaver = None 
     
+    if data.config.dimmer_enabled:
+        Dimmer(data, matrix,scheduler)
+        
+    if data.config.screensaver_enabled:
+        screensaver = screenSaver(data, matrix, sleepEvent, scheduler)
+        
     if driver.is_hardware():
-        from sbio.dimmer import Dimmer
         from sbio.pushbutton import PushButton
         from sbio.motionsensor import Motion
-        from sbio.screensaver import screenSaver
-
-        if data.config.dimmer_enabled:
-            dimmer = Dimmer(data, matrix,scheduler)
-
         
-        if data.config.screensaver_enabled:
-            screensaver = screenSaver(data, matrix, sleepEvent, scheduler)
-            if data.config.screensaver_motionsensor:
-                motionsensor = Motion(data,matrix,sleepEvent,scheduler,screensaver)
-                motionsensorThread = threading.Thread(target=motionsensor.run, args=())
-                motionsensorThread.daemon = True
-                motionsensorThread.start()
-
+        if data.config.screensaver_motionsensor:
+            motionsensor = Motion(data,matrix,sleepEvent,scheduler,screensaver)
+            motionsensorThread = threading.Thread(target=motionsensor.run, args=())
+            motionsensorThread.daemon = True
+            motionsensorThread.start()
+            
         if data.config.pushbutton_enabled:
             pushbutton = PushButton(data,matrix,sleepEvent)
             pushbuttonThread = threading.Thread(target=pushbutton.run, args=())

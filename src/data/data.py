@@ -9,12 +9,10 @@ import debug
 import nhl_api
 from data.playoffs import Series
 from data.status import Status
-from utils import get_lat_lng, convert_time
+from utils import get_lat_lng
 import json
 
 NETWORK_RETRY_SLEEP_TIME = 0.5
-
-
 
 
 def filter_list_of_games(games, teams):
@@ -169,7 +167,6 @@ class Data:
 
         # Get the status from the API
         self.get_status()
-
         # Get favorite team's id
         self.pref_teams = self.get_pref_teams_id()
 
@@ -245,12 +242,12 @@ class Data:
             
             #Don't think this is needed to be called a second time
            #self.refresh_daily()           
-            #self.status.refresh_next_season()
+            self.status.refresh_next_season()
            
             return True
         else:
             debug.info("It is not a new day")
-                        
+                                   
             return False
 
     #
@@ -300,12 +297,15 @@ class Data:
                     self.games = []
                     self.pref_games = []
                     return data
-
+                
+            
                 self.games = data["games"]
+                                 
                 self.pref_games = filter_list_of_games(self.games, self.pref_teams)
+                            
                 # Populate the TeamInfo classes used for the team_summary board
                 for team_id in self.pref_teams:
-                    # import pdb; pdb.set_trace()
+                    #import pdb; pdb.set_trace()
                     team_info = self.teams_info[team_id].details
                     pg, ng = nhl_api.info.team_previous_game(team_info.abbrev, str(date.today()))
                     team_info.previous_game = pg
@@ -313,7 +313,7 @@ class Data:
 
                 if self.config.preferred_teams_only and self.pref_teams:
                     self.games = self.pref_games
-
+                
                 if not self.is_pref_team_offday() and self.config.live_mode:
                     #self.pref_games = prioritize_pref_games(self.pref_games, self.pref_teams)
                     self.check_all_pref_games_final()
@@ -331,11 +331,13 @@ class Data:
                 sleep(NETWORK_RETRY_SLEEP_TIME)
 
             except IndexError as error_message:
-                debug.error(error_message)
-                debug.info("All preferred games are Final, showing the top preferred game")
+                if attempts_remaining == 1:
+                    debug.error(f"{error_message} or All preferred games are Final, showing the top preferred game")
                 #self.current_game_index = 0
                 self.all_pref_games_final = True
-                self.refresh_games()
+                attempts_remaining -= 1
+                #import pdb; pdb.set_trace()
+                #self.refresh_games()
 
     def check_game_priority(self):
         """

@@ -18,7 +18,7 @@ LOGO_URL_NTL = 'https://assets.nhle.com/logos/ntl/svg/{}_20242025-20242025_{}.sv
 
 
 class LogoRenderer:
-    def __init__(self, matrix, config, element_layout, team_abbrev, board, gameLocation=None):
+    def __init__(self, matrix, config, element_layout, team_abbrev, board, gameLocation=None, img=None):
         self.matrix = matrix
 
         self.logo_variant = config.config.logos.get_team_logo(team_abbrev)
@@ -30,8 +30,8 @@ class LogoRenderer:
         )
         
         self.element_layout = element_layout
-
-        self.load(team_abbrev)
+        self.img = img
+        self.load(team_abbrev, img)
 
     def get_size(self):
         return (
@@ -46,12 +46,15 @@ class LogoRenderer:
             size[0], size[1]
         ))
 
-    def load(self, team_abbrev):
-        try:
-            filename = self.get_path(team_abbrev)
-            self.logo = Image.open(filename)
-        except FileNotFoundError:
-            self.save_image(filename, team_abbrev)
+    def load(self, team_abbrev, img=None):
+        if img:
+            self.logo = Image.open(img)
+        else:
+            try:
+                filename = self.get_path(team_abbrev)
+                self.logo = Image.open(filename)
+            except FileNotFoundError:
+                self.save_image(filename, team_abbrev)
 
         rotate = self.layout.rotate
         flip = self.layout.flip

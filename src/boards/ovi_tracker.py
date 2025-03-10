@@ -48,7 +48,8 @@ class OviTrackerRenderer:
                 self.data.config,
                 self.layout.logo,
                 team.details.abbrev,
-                'ovi_tracker'
+                'ovi_tracker',
+                img='assets/images/GR8_CHASE.png'
             )
 
             # Clear the matrix
@@ -65,9 +66,9 @@ class OviTrackerRenderer:
             self.matrix.draw_image((25,0), gradient, align="center")
 
             # Draw text over rectangles
-            self.matrix.draw_text_centered(
-                1, 
-                "OVI GOAL TRACKER", 
+            self.matrix.draw_text(
+                (1, 1), 
+                "GR8 CHASE", 
                 self.font,
                 fill=(txt_color['r'], txt_color['g'], txt_color['b']),
                 backgroundColor=(bg_color['r'], bg_color['g'], bg_color['b'])

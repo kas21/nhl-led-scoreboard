@@ -75,7 +75,7 @@
       "align": "center-top"
     },
     "SOG": {
-      "position": ["50%", 6],
+      "position": ["50%", 12],
       "align": "center-top"
     },
     "irregular_status": {
@@ -118,14 +118,14 @@
     },
 
     "last_name":{
-      "position": [0, 7],
+      "position": [0, 14],
       "relative": {
         "to": "team_name",
         "align": "bottom"
       } 
     },
     "minutes":{
-      "position": [0, 6],
+      "position": [0, 12],
       "font": "medium_2",
       "relative": {
         "to": "last_name",
@@ -441,7 +441,6 @@
       "font": "wx_medium",
       "align": "center-bottom"
       }
-    
   },
   "ovi_tracker": {
     "logo": {

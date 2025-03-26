@@ -1,0 +1,494 @@
+{
+  "team_summary": {
+    "logos": {
+      "_default": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "ANA": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "ARI": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "BOS": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "BUF": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "CAR": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "CHI": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "COL": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "CBJ": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "DAL": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "DET": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "EDM": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "FLA": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "LAK": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "MIN": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "MTL": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "NJD": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "NSH": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "NYI": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "NYR": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "OTT": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "PHI": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "PIT": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "SEA": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "SJS": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "STL": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "TBL": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "TOR": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "VAN": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "VGK": {
+        "zoom": "100%",
+        "position": [0, 0]
+      },
+      "WSH": {
+        "zoom": "100%",
+        "position": [0, 0],
+        "alt":{
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "WPG": {
+        "zoom": "100%",
+        "position": [0, 0]
+      }
+    }
+  },
+  "scoreboard": {
+    "logos": {
+      "_default": {
+        "zoom": "100%",
+        "position": [0, 0],
+        "flip": 0,
+        "rotate": 0,
+        "crop": [0, 0, 0, 0],
+
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0],
+          "flip": 0,
+          "rotate": 0,
+          "crop": [0, 0, 0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0],
+          "flip": 0,
+          "rotate": 0,
+          "crop": [0, 0, 0, 0]
+        }
+      },
+      "ANA": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "ARI": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "BOS": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "BUF": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "CGY": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "CAR": {
+        "home": {
+          "zoom": "100%",
+          "position": [-20, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "CHI": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "COL": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "CBJ": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "DAL": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "DET": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [20, 0]
+        }
+      },
+      "EDM": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "FLA": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "LAK": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [-15, 0]
+        }
+      },
+      "MIN": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "MTL": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "NJD": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "NSH": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "NYI": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "NYR": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "OTT": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "PHI": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "PIT": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "SEA": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "SJS": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "STL": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "TBL": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "TOR": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "VAN": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        }
+      },
+      "VGK": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [-2, 0]
+        }
+      },
+      "WSH": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "alt":{
+          "home": {
+            "zoom": "100%",
+            "position": [0, 0]
+          },
+          "away": {
+            "zoom": "100%",
+            "position": [0, 0]
+          }
+        }
+      },
+      "WPG": {
+        "home": {
+          "zoom": "100%",
+          "position": [0, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [-3, 0]
+        }
+      }
+    }
+  }
+}

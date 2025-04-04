@@ -164,6 +164,8 @@ class StrideKickRenderer:
                 # Draw the image at current vertical position
                 self.matrix.draw_image((0, i), image)
                 self.matrix.render()
+                if i == 0:
+                    self.sleepEvent.wait(1)
 
                 # Handle vertical scrolling
                 if i > -(img_height - self.matrix.height):

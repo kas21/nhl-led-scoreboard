@@ -21,6 +21,7 @@ from boards.player_stats import PlayerStatsRenderer
 from time import sleep
 from boards.ovi_tracker import OviTrackerRenderer
 from boards.stats_leaders import StatsLeaders
+from boards.stridekick import StrideKickRenderer
 
 import traceback
 
@@ -307,6 +308,9 @@ class Boards:
 
     def stats_leaders(self, data, matrix, sleepEvent):
         StatsLeaders(data, matrix, sleepEvent).render()
+
+    def stridekick(self, data, matrix, sleepEvent):
+        StrideKickRenderer(data, matrix, sleepEvent).render()
 
     def _get_board_list(self):
         boards = []

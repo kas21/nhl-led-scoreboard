@@ -143,6 +143,7 @@ config/location.json
 # ignore generated logos
 assets/logos/*
 !assets/logos/_local
+assets/stridekick_data.json
 
 # VScode
 .vscode/*

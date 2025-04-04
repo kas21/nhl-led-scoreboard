@@ -1,32 +1,32 @@
 [
-    {
-      "place": 1,
-      "name": "kship",
-      "steps": 28351
-    },
-    {
-      "place": 2,
-      "name": "xavierwalks",
-      "steps": 22633
-    },
-    {
-      "place": 3,
-      "name": "wchoi",
-      "steps": 22017
-    },
-    {
-      "place": 4,
-      "name": "jschugs",
-      "steps": 16742
-    },
-    {
-      "place": 5,
-      "name": "MWins",
-      "steps": 11332
-    },
-    {
-      "place": 6,
-      "name": "brettaweston",
-      "steps": 11308
-    }
-  ]
+  {
+    "place": 1,
+    "name": "kship",
+    "steps": 28673
+  },
+  {
+    "place": 2,
+    "name": "xavierwalks",
+    "steps": 22633
+  },
+  {
+    "place": 3,
+    "name": "wchoi",
+    "steps": 22315
+  },
+  {
+    "place": 4,
+    "name": "jschugs",
+    "steps": 16742
+  },
+  {
+    "place": 5,
+    "name": "MWins",
+    "steps": 11332
+  },
+  {
+    "place": 6,
+    "name": "brettaweston",
+    "steps": 11308
+  }
+]

@@ -63,7 +63,7 @@ class StrideKickRenderer:
         top = row_height - 1
 
         # Draw header with white text
-        draw.text((1, 0), "STRIDEKICK LEADERBOARD", font=self.font, fill=(255, 255, 255))
+        draw.text((1, 0), "WALK THIS WAY", font=self.font, fill=(255, 255, 255))
         row_pos += row_height
 
         # Draw each record

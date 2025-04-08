@@ -332,7 +332,8 @@
       "NSH": {
         "home": {
           "zoom": "100%",
-          "position": [-45, 0]
+          "position": [-25, 0],
+          "crop": [0.2, 0, 0, 0]
         },
         "away": {
           "zoom": "100%",

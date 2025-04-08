@@ -186,13 +186,13 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [10, 0]
         }
       },
       "BUF": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-5, 0]
         },
         "away": {
           "zoom": "100%",
@@ -216,7 +216,7 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [30, 0]
         }
       },
       "CHI": {
@@ -226,13 +226,13 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [20, 0]
         }
       },
       "COL": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-10, 0]
         },
         "away": {
           "zoom": "100%",
@@ -242,7 +242,7 @@
       "CBJ": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-5, 0]
         },
         "away": {
           "zoom": "100%",
@@ -252,7 +252,7 @@
       "DAL": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-5, 0]
         },
         "away": {
           "zoom": "100%",
@@ -266,7 +266,7 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [20, 0]
+          "position": [30, 0]
         }
       },
       "EDM": {
@@ -312,7 +312,7 @@
       "MTL": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-20, 0]
         },
         "away": {
           "zoom": "100%",
@@ -322,7 +322,7 @@
       "NJD": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-5, 0]
         },
         "away": {
           "zoom": "100%",
@@ -332,7 +332,7 @@
       "NSH": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-45, 0]
         },
         "away": {
           "zoom": "100%",
@@ -346,7 +346,7 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [10, 0]
         }
       },
       "NYR": {
@@ -366,7 +366,7 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [5, 0]
         }
       },
       "PHI": {
@@ -382,7 +382,7 @@
       "PIT": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-5, 0]
         },
         "away": {
           "zoom": "100%",
@@ -439,6 +439,16 @@
           "position": [0, 0]
         }
       },
+      "UTA": {
+        "home": {
+          "zoom": "100%",
+          "position": [-5, 0]
+        },
+        "away": {
+          "zoom": "100%",
+          "position": [5, 0]
+        }
+      },
       "VAN": {
         "home": {
           "zoom": "100%",
@@ -446,7 +456,7 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [5, 0]
         }
       },
       "VGK": {

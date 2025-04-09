@@ -162,7 +162,7 @@
       "ANA": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-8, 0]
         },
         "away": {
           "zoom": "100%",
@@ -272,7 +272,7 @@
       "EDM": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-5, 0]
         },
         "away": {
           "zoom": "100%",
@@ -353,7 +353,7 @@
       "NYR": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-10, 0]
         },
         "away": {
           "zoom": "100%",
@@ -377,7 +377,7 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [8, 0]
         }
       },
       "PIT": {
@@ -403,7 +403,7 @@
       "SJS": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [13, 0]
         },
         "away": {
           "zoom": "100%",
@@ -417,7 +417,7 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [25, 0]
         }
       },
       "TBL": {
@@ -433,11 +433,11 @@
       "TOR": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [3, 0]
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [3, 0]
         }
       },
       "UTA": {

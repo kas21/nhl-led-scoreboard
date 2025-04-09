@@ -738,7 +738,7 @@
       "align": "left"
     },
     "title": {
-      "position": [124, 1],
+      "position": ["50%", 1],
       "align": "center-top",
       "font": "wx_medium"
     },

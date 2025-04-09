@@ -69,7 +69,7 @@ class StrideKickRenderer:
         # Draw each record
         for record in records:
             place = str(record["place"])
-            name = record["name"]
+            name = record["name"].upper()
             steps = str(record["steps"])
 
             # Draw place with gold color for top 3

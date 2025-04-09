@@ -88,7 +88,6 @@ class StatsLeaders:
 
         # Draw header
         title_text = f"NHL {self.categories[category].upper()} LEADERS"
-        debug.info(f"Drawing title: {title_text}")
         draw.text((1, row_pos), title_text, font=self.layout._default.font)
 
         row_pos += row_height

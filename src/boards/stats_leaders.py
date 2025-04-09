@@ -1,17 +1,18 @@
 from PIL import Image, ImageDraw
-from utils import get_file
 from nhl_api.data import get_skater_stats_leaders
 import debug
 import traceback
+from renderer.matrix import Matrix
+
 
 class StatsLeaders:
-    def __init__(self, data, matrix, sleepEvent):
+    def __init__(self, data, matrix: Matrix, sleepEvent):
         self.data = data
         self.matrix = matrix
         self.sleepEvent = sleepEvent
         self.sleepEvent.clear()
         self.team_colors = data.config.team_colors
-        self.layout = data.config.layout
+        self.layout = self.data.config.config.layout.get_board_layout('stats_leaders')
 
         self.enabled_categories = self.data.config.stats_leaders_categories
         self.rotation_rate = self.data.config.stats_leaders_rotation_rate
@@ -46,7 +47,7 @@ class StatsLeaders:
 
                 # Calculate image height (header + 10 players * 7 pixels per row)
                 im_height = (11 * 7)  # 11 rows total (1 header + 10 players)
-                
+
                 # Create and draw the image
                 image = self.draw_leaders(category, leaders_data[category], im_height, self.matrix.width)
                 
@@ -82,14 +83,20 @@ class StatsLeaders:
         row_height = 7
         top = row_height - 1
 
+        # Clear the matrix
+        self.matrix.clear()
+
         # Draw header
-        draw.text((1, 0), f"NHL {self.categories[category]} LEADERS", font=self.layout.font)
+        title_text = f"NHL {self.categories[category].upper()} LEADERS"
+        debug.info(f"Drawing title: {title_text}")
+        draw.text((1, row_pos), title_text, font=self.layout._default.font)
+
         row_pos += row_height
 
         # Draw each player's stats
         for player in leaders_data:
             # Get player info
-            last_name = player['lastName']['default']
+            last_name = player['lastName']['default'].upper()
             abbrev = player['teamAbbrev']
             stat = str(player['value'])
             rank = str(leaders_data.index(player) + 1)
@@ -101,10 +108,10 @@ class StatsLeaders:
             txt_color = team_colors.color(f"{team_id}.text")
 
             # Draw rank (white)
-            draw.text((1, row_pos), rank + ".", font=self.layout.font)
+            draw.text((1, row_pos), rank + ".", font=self.layout._default.font)
             
             # Calculate name width for background rectangle
-            name_width = self.layout.font.getlength(last_name)
+            name_width = self.layout._default.font.getlength(last_name)
             
             # Draw background rectangle for name
             draw.rectangle(
@@ -115,11 +122,11 @@ class StatsLeaders:
             # Draw last name (in team text color)
             draw.text((15, row_pos), last_name, 
                      fill=(txt_color['r'], txt_color['g'], txt_color['b']), 
-                     font=self.layout.font)
+                     font=self.layout._default.font)
             
             # Right-align goals count (white)
-            stat_width = self.layout.font.getlength(stat)
-            draw.text((width - stat_width - 1, row_pos), stat, font=self.layout.font)
+            stat_width = self.layout._default.font.getlength(stat)
+            draw.text((width - stat_width - 1, row_pos), stat, font=self.layout._default.font)
 
             row_pos += row_height
 

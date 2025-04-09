@@ -718,6 +718,16 @@
       "align": "center-bottom"
       }
   },
+  "stats_leaders": {
+    "_default": {
+      "font": "wx_medium"
+    },
+    "title": {
+      "position": [0, 5],
+      "align": "left-top",
+      "font": "wx_medium"
+    }
+  },
   "ovi_tracker": {
     "logo": {
       "position": [0, 0],
@@ -725,7 +735,7 @@
     },
     "title": {
       "position": [124, 1],
-      "align": "right-top",
+      "align": "center-top",
       "font": "wx_medium"
     },
     "name": {

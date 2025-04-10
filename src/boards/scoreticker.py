@@ -31,6 +31,9 @@ class Scoreticker:
 
                 ScoreboardRenderer(self.data, self.matrix, GameSummaryBoard(self.games[self.index], self.data)).render()
                 self.show_indicator()
+
+                # Uncomment to show vertical lines to help with alignment
+                #self.draw_vertical_lines()
                 self.matrix.render()
 
                 if self.data.network_issues:
@@ -90,3 +93,28 @@ class Scoreticker:
             pixels,
             (pixels[-1].position[0] - pixels[0].position[0], 1)
         )
+
+    def draw_vertical_lines(self):
+        """
+            Draws vertical lines at 33%, 50%, and 66% of the screen width.
+        """
+        width = self.matrix.width
+        height = self.matrix.height
+        
+        # Calculate x positions for the lines
+        positions = [
+            int(23),
+            int(46),  # 33%
+            int(64),
+            int(65),
+            int(83),
+            int(106)  # 66%
+        ]
+        
+        # Draw each vertical line
+        for x in positions:
+            for y in range(height):
+                self.matrix.draw_pixel(
+                    (x, y),
+                    (255, 255, 255)  # White color
+                )

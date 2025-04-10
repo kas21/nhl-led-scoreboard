@@ -34,6 +34,7 @@ class Scoreticker:
 
                 # Uncomment to show vertical lines to help with alignment
                 #self.draw_vertical_lines()
+                
                 self.matrix.render()
 
                 if self.data.network_issues:

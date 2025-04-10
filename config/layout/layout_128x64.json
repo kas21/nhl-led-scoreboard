@@ -13,7 +13,7 @@
   },
   "scoreboard": {
     "center_top":{
-      "position": ["50%", 0],
+      "position": [65, 0],
       "align": "center-top"
     },
     "relative_center_top": {
@@ -32,7 +32,7 @@
       "align": "right"
     },
     "vs": {
-      "position": ["50%", "45%"],
+      "position": [65, "45%"],
       "align": "center-top",
       "font": "medium"
     },
@@ -42,11 +42,11 @@
       "font": "medium"
     },
     "scheduled_date": {
-      "position": ["50%", 0],
+      "position": [65, 0],
       "align": "center-top"
     },
     "scheduled_time": {
-      "position": [0, 2],
+      "position": [1, 2],
       "relative": {
         "to": "scheduled_date",
         "align": "center-bottom"

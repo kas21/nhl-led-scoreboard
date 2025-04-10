@@ -7,6 +7,7 @@ import os
 # import grp
 import errno
 from utils import round_normal
+from .logo_cache import LogoCache
 
 uid = int(os.stat("./VERSION").st_uid)
 gid = int(os.stat("./VERSION").st_uid)
@@ -20,6 +21,7 @@ LOGO_URL = 'https://assets.nhle.com/logos/nhl/svg/{}_{}.svg'
 class LogoRenderer:
     def __init__(self, matrix, config, element_layout, team_abbrev, board, gameLocation=None, img=None):
         self.matrix = matrix
+        self.logo_cache = LogoCache()
 
         self.logo_variant = config.config.logos.get_team_logo(team_abbrev)
         self.layout = config.config.layout.get_scoreboard_logo(
@@ -47,16 +49,35 @@ class LogoRenderer:
             size[0], size[1]
         ))
 
+    def get_cache_key(self, team_abbrev):
+        """Generate a unique cache key for the logo"""
+        size = self.get_size()
+        return f"{team_abbrev}_{self.logo_variant}_{size[0]}x{size[1]}"
+
     def load(self, team_abbrev, img):
         try:
             # If img is not None, load the image, else lookup team logo
             if img:
                 self.logo = Image.open(img)
             else:
-                filename = self.get_path(team_abbrev)
-                self.logo = Image.open(filename)
+                # Try to get from cache first
+                cache_key = self.get_cache_key(team_abbrev)
+                cached_logo = self.logo_cache.get(cache_key)
+                
+                if cached_logo:
+                    self.logo = cached_logo
+                else:
+                    filename = self.get_path(team_abbrev)
+                    self.logo = Image.open(filename)
+                    # Store in cache
+                    self.logo_cache.set(cache_key, self.logo)
         except FileNotFoundError:
             self.save_image(filename, team_abbrev)
+            # After saving, try to get from cache again
+            cache_key = self.get_cache_key(team_abbrev)
+            cached_logo = self.logo_cache.get(cache_key)
+            if cached_logo:
+                self.logo = cached_logo
 
         rotate = self.layout.rotate
         flip = self.layout.flip

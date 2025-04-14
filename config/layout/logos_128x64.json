@@ -162,11 +162,11 @@
       "ANA": {
         "home": {
           "zoom": "100%",
-          "position": [-8, 0]
+          "position": [-8, 1]
         },
         "away": {
           "zoom": "100%",
-          "position": [15, 0]
+          "position": [15, 1]
         }
       },
       "ARI": {
@@ -202,7 +202,7 @@
       "CGY": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-20, 0]
         },
         "away": {
           "zoom": "100%",
@@ -226,7 +226,7 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [20, 0]
+          "position": [22, 0]
         }
       },
       "COL": {
@@ -246,7 +246,7 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [15, 0]
         }
       },
       "DAL": {
@@ -256,17 +256,17 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [23, 0]
         }
       },
       "DET": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [0, -2]
         },
         "away": {
           "zoom": "100%",
-          "position": [30, 0]
+          "position": [30, -2]
         }
       },
       "EDM": {
@@ -276,7 +276,7 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [5, 0]
         }
       },
       "FLA": {
@@ -286,7 +286,7 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [2, 0]
         }
       },
       "LAK": {
@@ -296,17 +296,17 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [-15, 0]
+          "position": [25, 0]
         }
       },
       "MIN": {
         "home": {
-          "zoom": "100%",
-          "position": [0, 0]
+          "zoom": "90%",
+          "position": [0, 2]
         },
         "away": {
-          "zoom": "100%",
-          "position": [0, 0]
+          "zoom": "90%",
+          "position": [35, 2]
         }
       },
       "MTL": {
@@ -322,11 +322,11 @@
       "NJD": {
         "home": {
           "zoom": "100%",
-          "position": [-5, 0]
+          "position": [-10, 3]
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [4, 3]
         }
       },
       "NSH": {
@@ -363,7 +363,7 @@
       "OTT": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-25, 0]
         },
         "away": {
           "zoom": "100%",
@@ -373,7 +373,7 @@
       "PHI": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-30, 0]
         },
         "away": {
           "zoom": "100%",
@@ -403,7 +403,7 @@
       "SJS": {
         "home": {
           "zoom": "100%",
-          "position": [13, 0]
+          "position": [-15, 0]
         },
         "away": {
           "zoom": "100%",
@@ -423,7 +423,7 @@
       "TBL": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-5, 0]
         },
         "away": {
           "zoom": "100%",
@@ -453,7 +453,7 @@
       "VAN": {
         "home": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [-10, 0]
         },
         "away": {
           "zoom": "100%",
@@ -462,8 +462,8 @@
       },
       "VGK": {
         "home": {
-          "zoom": "100%",
-          "position": [2, 0]
+          "zoom": "95%",
+          "position": [3, 1]
         },
         "away": {
           "zoom": "100%",
@@ -482,11 +482,11 @@
         "alt":{
           "home": {
             "zoom": "100%",
-            "position": [-5, 0]
+            "position": [-5, -5]
           },
           "away": {
             "zoom": "100%",
-            "position": [0, 0]
+            "position": [8, -5]
           }
         }
       },

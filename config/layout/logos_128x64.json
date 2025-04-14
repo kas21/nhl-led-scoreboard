@@ -256,7 +256,7 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [0, 0]
+          "position": [20, 0]
         }
       },
       "DET": {
@@ -296,7 +296,7 @@
         },
         "away": {
           "zoom": "100%",
-          "position": [-15, 0]
+          "position": [25, 0]
         }
       },
       "MIN": {

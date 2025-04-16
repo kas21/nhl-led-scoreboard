@@ -26,6 +26,7 @@ STANDINGS_WILD_CARD = STANDINGS_URL + '/wildCardWithLeaders'
 PLAYOFF_URL = BASE_URL + "tournaments/playoffs?expand=round.series,schedule.game.seriesSummary&season={}"
 SERIES_RECORD = "https://records.nhl.com/site/api/playoff-series?cayenneExp=playoffSeriesLetter='{}' and seasonId={}"
 SKATER_STATS_LEADERS_URL = BASE_URL + 'skater-stats-leaders/current'
+TEAM_FULL_SCHEDULE_URL = BASE_URL + "club-schedule-season/{}/now"
 REQUEST_TIMEOUT = 5
 
 TIMEOUT_TESTING = 0.001  # TO DELETE
@@ -170,6 +171,13 @@ def get_playoff_data(season):
 def get_series_record(seriesCode, season):
     try:
         data = requests.get(SERIES_RECORD.format(seriesCode, season), timeout=REQUEST_TIMEOUT)
+        return data
+    except requests.exceptions.RequestException as e:
+        raise ValueError(e)
+
+def get_team_schedule(team_code):
+    try:
+        data = requests.get(TEAM_FULL_SCHEDULE_URL.format(team_code), timeout=REQUEST_TIMEOUT)
         return data
     except requests.exceptions.RequestException as e:
         raise ValueError(e)

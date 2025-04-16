@@ -133,9 +133,31 @@ def team_info():
     #         print(team)
     #         debug.error("Missing data in current team info")
 
+def team_next_game_by_code(team_code):
+    data = nhl_api.data.get_team_schedule(team_code)
+    parsed = data.json()
+    pg = None
+    ng = None
+
+    for game in parsed["games"]:
+        if game["gameState"] == "FUT" or game["gameState"] == "PRE" or game["gameState"] == "LIVE":
+            ng = game
+        else:
+            pg = game
+    
+    return pg, ng
+
+def team_last_game_by_code(team_code):
+    data = nhl_api.data.get_team_schedule(team_code)
+    parsed = data.json()
+    for game in parsed["data"]["games"]:
+        if game["gameState"] == "FINAL":
+            return game
+    return None
 
 # This one is a little funky for the time. I'll loop through the what and why
 def team_previous_game(team_code, date, pg = None, ng = None):
+    return team_next_game_by_code(team_code)
     # This response returns the next three games, starting from the date given
     client = NHLClient(verbose=False)
     teams_response = {}

@@ -17,7 +17,16 @@ class Periods:
             # Apparently the number can be nil? I am struggling figure out why this is failing
             self.number = overview["periodDescriptor"]["number"] if overview["periodDescriptor"]["number"] else 0
         elif overview["gameState"] == "OFF" or overview["gameState"] == "FINAL":
-            self.number = overview["periodDescriptor"]["number"] if overview["periodDescriptor"]["number"] else 0
+            if overview.get("gameOutcome"):
+                lastPeriod = overview["gameOutcome"]["lastPeriodType"]
+                self.number = 3
+                if lastPeriod == "OT":
+                    self.number = 4
+                elif lastPeriod == "SO":
+                    self.number = 5
+            else:
+                self.number = overview["periodDescriptor"]["number"] if overview["periodDescriptor"]["number"] else 0
+
         
         try:
             self.clock = overview["clock"]["timeRemaining"]

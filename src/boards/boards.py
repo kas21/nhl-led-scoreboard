@@ -22,7 +22,7 @@ from time import sleep
 from boards.ovi_tracker import OviTrackerRenderer
 from boards.stats_leaders import StatsLeaders
 from boards.stridekick import StrideKickRenderer
-
+from boards.holidays import Holidays
 import traceback
 
 class Boards:
@@ -311,6 +311,9 @@ class Boards:
 
     def stridekick(self, data, matrix, sleepEvent):
         StrideKickRenderer(data, matrix, sleepEvent).render()
+
+    def holidays(self, data, matrix, sleepEvent):
+        Holidays(data, matrix, sleepEvent).render()
 
     def _get_board_list(self):
         boards = []

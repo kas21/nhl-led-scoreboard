@@ -32,7 +32,8 @@
               "player_stats",
               "ovi_tracker",
               "stats_leaders",
-              "stridekick"
+              "stridekick",
+              "holidays"
             ]
         }
     },    

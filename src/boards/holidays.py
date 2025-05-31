@@ -51,8 +51,19 @@ class Holidays:
                 align="left"
             )
 
+            self.matrix.render()
+            self.sleepEvent.wait(10)
+
+            img = get_file(f'assets/images/{self.matrix.width}x{self.matrix.height}_CCUSoon.png')
+            img = Image.open(img)
+            self.matrix.draw_image(
+                (0, 0),
+                img,
+                align="left"
+            )
 
             self.matrix.render()
             self.sleepEvent.wait(10)
+        
         
    

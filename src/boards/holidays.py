@@ -11,7 +11,6 @@ import datetime
 import debug
 from time import sleep
 from utils import get_file
-from pandas.tseries.holiday import USFederalHolidayCalendar
 from renderer.matrix import Matrix
 from renderer.logos import LogoRenderer
 
@@ -30,9 +29,6 @@ class Holidays:
         self.img = get_file(f'assets/images/{self.matrix.width}x{self.matrix.height}_HappyMothersDay.png')
         self.img = Image.open(self.img)
 
-        cal = USFederalHolidayCalendar()
-        self.holidays = cal.holidays(start='2014-01-01', end='2014-12-31').to_pydatetime()
-
     def render(self):
         self.matrix.clear()
 
@@ -42,6 +38,16 @@ class Holidays:
             self.matrix.draw_image(
                 (0, 0),
                 self.img,
+                align="left"
+            )
+
+        if today.month == 5 and (today.day == 31 or today.day==30):
+            debug.info("Its a holiday")
+            img = get_file(f'assets/images/{self.matrix.width}x{self.matrix.height}_CongratsGrad.png')
+            img = Image.open(img)
+            self.matrix.draw_image(
+                (0, 0),
+                img,
                 align="left"
             )
 

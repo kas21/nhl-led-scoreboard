@@ -35,11 +35,19 @@ class SeasonCountdown:
         self.scroll_pos = self.matrix.width
         
         # Set up season text
-        current_year = date.today().year
-        next_year = current_year + 1
+        self.current_year = date.today().year
+        self.next_year = self.current_year + 1
     
-        self.nextseason="{0}-{1}".format(current_year,next_year)
-        self.nextseason_short="NHL {0}-{1}".format(str(current_year)[-2:],str(next_year)[-2:])
+        self.nextseason="{0}-{1}".format(self.current_year,self.next_year)
+        self.nextseason_short="NHL {0}-{1}".format(str(self.current_year)[-2:],str(self.next_year)[-2:])
+
+        # Holidays
+        self.holidays = [
+            {"name": "Halloween", "month": 10, "day": 31, "image": "pumpkin"},
+            {"name": "Christmas", "month": 12, "day": 25, "image": "christmas_tree"}
+        ]
+
+
 
     def get_layout(self):
         """Get the layout for SeasonCountdown"""
@@ -48,6 +56,20 @@ class SeasonCountdown:
     
     def draw(self):
         
+        for h in self.holidays:
+            hdate = date(self.current_year, h["month"], h["day"])
+            print(f"Holiday: {h["name"]} - {str(hdate)}")
+
+            days_until = (hdate - date.today()).days
+            
+            # season starts today
+            if days_until == 0:
+                self.season_start_today()
+
+            #still counting down to season
+            elif days_until > 0:
+                self.season_countdown(days_until, h["name"], h["image"])
+
         debug.info("NHL Countdown Launched")
 
         # for testing purposes
@@ -63,7 +85,7 @@ class SeasonCountdown:
 
         #still counting down to season
         elif self.days_until_season > 0:
-            self.season_countdown()
+            self.season_countdown(self.days_until_season, self.nextseason_short, "nhl_logo")
 
         # dont show anything if season has started
         # could show someething in the future if wanted
@@ -78,7 +100,7 @@ class SeasonCountdown:
         rows = self.matrix.height
         cols = self.matrix.width
 
-        nhl_logo = Image.open(get_file(f'assets/logos/_local/{cols}x{rows}_nhl_logo.png'))
+        nhl_logo = Image.open(get_file(f'assets/images/{cols}x{rows}_nhl_logo.png'))
         black_gradiant = Image.open(get_file(f'assets/images/{cols}x{rows}_scoreboard_center_gradient.png'))
 
         self.matrix.draw_image_layout(self.layout.logo, nhl_logo)
@@ -121,14 +143,14 @@ class SeasonCountdown:
         self.matrix.render()
         self.sleepEvent.wait(15)
 
-    def season_countdown(self) :
+    def season_countdown(self, daysUntil, dateName, imageName) :
         
         self.matrix.clear()
 
         rows = self.matrix.height
         cols = self.matrix.width
 
-        nhl_logo = Image.open(get_file(f'assets/logos/_local/{cols}x{rows}_nhl_logo.png'))
+        nhl_logo = Image.open(get_file(f'assets/images/{cols}x{rows}_{imageName}.png'))
         black_gradiant = Image.open(get_file(f'assets/images/{cols}x{rows}_scoreboard_center_gradient.png'))
 
         self.matrix.draw_image_layout(self.layout.logo, nhl_logo)
@@ -140,7 +162,7 @@ class SeasonCountdown:
         self.sleepEvent.wait(0.5)
 
         #draw days
-        self.matrix.draw_text_layout(self.layout.count_text,str(self.days_until_season), fillColor=(255,165,0))
+        self.matrix.draw_text_layout(self.layout.count_text,str(daysUntil), fillColor=(255,165,0))
         
         self.matrix.render()
         self.sleepEvent.wait(1)
@@ -158,7 +180,7 @@ class SeasonCountdown:
         #draw bottom text  
         self.matrix.draw_text_layout(
             self.layout.season_text, 
-            self.nextseason_short, 
+            dateName, 
             fillColor=(0,0,0),
             backgroundColor=(155,155,155)
         )

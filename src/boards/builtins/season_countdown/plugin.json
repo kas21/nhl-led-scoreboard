@@ -1,0 +1,11 @@
+{
+  "name": "season_countdown",
+  "description": "Season Countdown Board displays time until NHL season starts",
+  "boards": [
+    {
+      "id": "season_countdown",
+      "class_name": "SeasonCountdownBoard",
+      "module": "board"
+    }
+  ]
+}

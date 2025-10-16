@@ -1,0 +1,232 @@
+#!/bin/bash
+# NHL LED Scoreboard - Cache and permission management utility
+#
+# This script:
+# 1. Reports on __pycache__ directories (optionally deletes them)
+# 2. Identifies files owned by root (excluding __pycache__)
+# 3. Optionally changes ownership of root-owned files to the current user
+#
+# This is safe to run at any time and is automatically called during:
+# - Installation (sb-init)
+# - Updates (sb-upgrade)
+#
+# Usage:
+#   ./scripts/sbtools/sb-cleanup-cache                    # Report only (no changes)
+#   ./scripts/sbtools/sb-cleanup-cache --delete-cache     # Delete __pycache__ directories
+#   ./scripts/sbtools/sb-cleanup-cache --fix-perms        # Fix ownership of root-owned files
+#   ./scripts/sbtools/sb-cleanup-cache -d -f              # Delete cache AND fix permissions
+
+# Make script work regardless of where it is run from
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+cd "${DIR}/../.." || exit 1
+
+# Parse command line arguments
+DELETE_CACHE=false
+FIX_PERMISSIONS=false
+
+for arg in "$@"; do
+    case $arg in
+        --delete-cache|-d)
+            DELETE_CACHE=true
+            ;;
+        --fix-perms|-f)
+            FIX_PERMISSIONS=true
+            ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Usage: $0 [--delete-cache|-d] [--fix-perms|-f]"
+            exit 1
+            ;;
+    esac
+done
+
+# Colors for output
+RED=$(tput setaf 1 2>/dev/null)
+GREEN=$(tput setaf 2 2>/dev/null)
+YELLOW=$(tput setaf 3 2>/dev/null)
+BOLD=$(tput bold 2>/dev/null)
+RESET=$(tput sgr0 2>/dev/null)
+
+echo "${BOLD}${GREEN}Checking Python cache files...${RESET}"
+
+# Count how many __pycache__ directories exist
+CACHE_COUNT=$(find . -type d -name "__pycache__" 2>/dev/null | wc -l | tr -d ' ')
+
+if [ "$CACHE_COUNT" -eq 0 ]; then
+    echo "${GREEN}✓ No __pycache__ directories found.${RESET}"
+    REMOVED=0
+    FINAL_COUNT=0
+else
+    echo "${YELLOW}Found ${CACHE_COUNT} __pycache__ director(y/ies)${RESET}"
+
+    if [ "$DELETE_CACHE" = true ]; then
+        # Actually delete the cache directories
+        echo "${YELLOW}Deleting cache directories...${RESET}"
+
+        # Try to remove without sudo first
+        find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null
+
+        # Check if any remain (would need sudo to remove)
+        AFTER_COUNT=$(find . -type d -name "__pycache__" 2>/dev/null | wc -l | tr -d ' ')
+
+        if [ "$AFTER_COUNT" -gt 0 ]; then
+            echo "${YELLOW}Some cache directories require elevated permissions...${RESET}"
+
+            # Check if we can use sudo
+            if sudo -n true 2>/dev/null; then
+                # Already have sudo privileges, just use them
+                sudo find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null
+                AFTER_COUNT=0
+            else
+                # Need to ask for sudo
+                echo "${YELLOW}This script needs sudo to remove cache files created by root.${RESET}"
+                if sudo find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null; then
+                    AFTER_COUNT=0
+                else
+                    echo "${RED}✗ Failed to remove some cache directories${RESET}"
+                    FINAL_COUNT=$AFTER_COUNT
+                fi
+            fi
+        fi
+
+        # Final check
+        FINAL_COUNT=$(find . -type d -name "__pycache__" 2>/dev/null | wc -l | tr -d ' ')
+        REMOVED=$((CACHE_COUNT - FINAL_COUNT))
+
+        if [ "$FINAL_COUNT" -eq 0 ]; then
+            if [ "$REMOVED" -gt 0 ]; then
+                echo "${GREEN}✓ Successfully removed ${REMOVED} __pycache__ director(y/ies)${RESET}"
+            fi
+        else
+            echo "${RED}✗ Warning: ${FINAL_COUNT} __pycache__ director(y/ies) could not be removed${RESET}"
+        fi
+    else
+        # Report only mode
+        echo "${YELLOW}To delete these cache directories, run with --delete-cache flag${RESET}"
+        FINAL_COUNT=$CACHE_COUNT
+        REMOVED=0
+    fi
+fi
+
+echo ""
+
+# Check for /tmp/sb_cache directory
+echo "${BOLD}${GREEN}Checking /tmp/sb_cache directory...${RESET}"
+
+if [ -d "/tmp/sb_cache" ]; then
+    SB_CACHE_OWNER=$(stat -c '%U' /tmp/sb_cache 2>/dev/null || stat -f '%Su' /tmp/sb_cache 2>/dev/null)
+
+    if [ "$SB_CACHE_OWNER" = "root" ]; then
+        echo "${YELLOW}Found /tmp/sb_cache owned by root${RESET}"
+
+        if [ "$DELETE_CACHE" = true ]; then
+            echo "${YELLOW}Deleting /tmp/sb_cache...${RESET}"
+
+            # Check if we can use sudo
+            if sudo -n true 2>/dev/null; then
+                # Already have sudo privileges, just use them
+                sudo rm -rf /tmp/sb_cache 2>/dev/null
+                SUCCESS=$?
+            else
+                # Need to ask for sudo
+                echo "${YELLOW}This operation requires sudo to remove /tmp/sb_cache owned by root.${RESET}"
+                sudo rm -rf /tmp/sb_cache 2>/dev/null
+                SUCCESS=$?
+            fi
+
+            if [ $SUCCESS -eq 0 ]; then
+                echo "${GREEN}✓ Successfully deleted /tmp/sb_cache (will be recreated on next run)${RESET}"
+            else
+                echo "${RED}✗ Failed to delete /tmp/sb_cache${RESET}"
+            fi
+        else
+            echo "${YELLOW}To delete /tmp/sb_cache, run with --delete-cache flag${RESET}"
+        fi
+    else
+        echo "${GREEN}✓ /tmp/sb_cache exists and is owned by ${SB_CACHE_OWNER}${RESET}"
+    fi
+else
+    echo "${GREEN}✓ /tmp/sb_cache does not exist${RESET}"
+fi
+
+echo ""
+
+# Check for files owned by root (excluding __pycache__ directories)
+echo "${BOLD}${GREEN}Checking for root-owned files...${RESET}"
+
+# Find all files owned by root, excluding __pycache__ directories and their contents
+ROOT_FILES=$(find . -user root -not -path "*/__pycache__/*" -not -name "__pycache__" 2>/dev/null)
+
+# Count files properly (handle empty results)
+if [ -z "$ROOT_FILES" ]; then
+    ROOT_FILES_COUNT=0
+else
+    ROOT_FILES_COUNT=$(echo "$ROOT_FILES" | wc -l | tr -d ' ')
+fi
+
+if [ "$ROOT_FILES_COUNT" -eq 0 ]; then
+    echo "${GREEN}✓ No root-owned files found (excluding cache files)${RESET}"
+    echo ""
+    if [ "$FINAL_COUNT" -eq 0 ]; then
+        exit 0
+    else
+        exit 1
+    fi
+fi
+
+echo "${YELLOW}Found ${ROOT_FILES_COUNT} file(s) owned by root:${RESET}"
+echo "${YELLOW}${ROOT_FILES}${RESET}"
+echo ""
+
+# Handle permission fixing
+if [ "$FIX_PERMISSIONS" = true ]; then
+    echo "${BOLD}${GREEN}Fixing ownership of root-owned files...${RESET}"
+
+    # Determine the target user
+    if [ -n "$SUDO_USER" ]; then
+        TARGET_USER="$SUDO_USER"
+    else
+        TARGET_USER=$(whoami)
+    fi
+
+    echo "${YELLOW}Setting ownership to: ${TARGET_USER}${RESET}"
+
+    # Check if we need sudo
+    if [ "$(whoami)" = "root" ]; then
+        # Already root, just chown
+        echo "$ROOT_FILES" | xargs -I {} chown -R "$TARGET_USER:$TARGET_USER" "{}" 2>/dev/null
+        SUCCESS=$?
+    else
+        # Not root, need sudo
+        if sudo -n true 2>/dev/null; then
+            # Already have sudo privileges
+            echo "$ROOT_FILES" | xargs -I {} sudo chown -R "$TARGET_USER:$TARGET_USER" "{}" 2>/dev/null
+            SUCCESS=$?
+        else
+            # Need to ask for sudo
+            echo "${YELLOW}This operation requires sudo to change ownership of root-owned files.${RESET}"
+            echo "$ROOT_FILES" | xargs -I {} sudo chown -R "$TARGET_USER:$TARGET_USER" "{}" 2>/dev/null
+            SUCCESS=$?
+        fi
+    fi
+
+    if [ $SUCCESS -eq 0 ]; then
+        echo "${GREEN}✓ Successfully changed ownership of root-owned files${RESET}"
+        echo ""
+        exit 0
+    else
+        echo "${RED}✗ Failed to change ownership of some files${RESET}"
+        echo ""
+        exit 1
+    fi
+else
+    # Just reporting, not fixing
+    echo "${GREEN}To fix ownership of these files, run:${RESET}"
+    echo "  ${YELLOW}$0 --fix-perms${RESET}"
+    echo ""
+    if [ "$FINAL_COUNT" -eq 0 ]; then
+        exit 0
+    else
+        exit 1
+    fi
+fi

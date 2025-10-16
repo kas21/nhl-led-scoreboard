@@ -14,8 +14,6 @@ Usage:
 """
 
 import argparse
-import fnmatch
-import importlib.util
 import json
 import logging
 import os
@@ -76,6 +74,29 @@ def save_json_atomic(path: Path, data: dict):
     tmp_path.replace(path)
 
 
+def load_plugin_metadata(plugin_path: Path) -> Optional[dict]:
+    """
+    Load plugin.json metadata file.
+
+    Args:
+        plugin_path: Path to the plugin directory
+
+    Returns:
+        Dict with plugin metadata, or None if file not found/invalid
+    """
+    plugin_json = plugin_path / "plugin.json"
+
+    if not plugin_json.exists():
+        logger.debug(f"No plugin.json found in {plugin_path}")
+        return None
+
+    try:
+        return load_json(plugin_json)
+    except Exception as e:
+        logger.warning(f"Could not read plugin.json from {plugin_path}: {e}")
+        return None
+
+
 def check_git_available():
     """Ensure git is installed and available."""
     try:
@@ -97,26 +118,39 @@ def clone_plugin(url: str, ref: Optional[str], tmp_dir: Path) -> Optional[str]:
     Clone a git repo into tmp_dir and optionally checkout a ref.
     Returns the resolved commit SHA, or None on failure.
     """
-    # Clone with depth 1 for speed
-    result = run_git(["clone", "--depth", "1", url, str(tmp_dir)])
-    if result.returncode != 0:
-        logger.error(f"Failed to clone {url}")
-        logger.error(result.stderr)
-        return None
-
-    # If a ref is specified, fetch and checkout
+    # If a ref is specified, try to clone that branch/tag directly
     if ref:
-        # Unshallow first to allow checking out arbitrary refs
-        logger.debug(f"Fetching ref: {ref}")
-        result = run_git(["fetch", "--depth", "1", "origin", ref], cwd=tmp_dir)
+        logger.debug(f"Cloning branch/ref: {ref}")
+        result = run_git(["clone", "--depth", "1", "--branch", ref, url, str(tmp_dir)])
         if result.returncode != 0:
-            logger.warning(f"Could not fetch ref '{ref}', using default branch")
-        else:
+            # --branch doesn't work with commit SHAs, so clone default and checkout
+            logger.debug(f"Could not clone ref '{ref}' directly, trying checkout method")
+            result = run_git(["clone", "--depth", "1", url, str(tmp_dir)])
+            if result.returncode != 0:
+                logger.error(f"Failed to clone {url}")
+                logger.error(result.stderr)
+                return None
+
+            # Fetch the specific commit
+            result = run_git(["fetch", "--depth", "1", "origin", ref], cwd=tmp_dir)
+            if result.returncode != 0:
+                logger.error(f"Failed to fetch ref '{ref}' from {url}")
+                logger.error(result.stderr)
+                return None
+
+            # Checkout the commit
             result = run_git(["checkout", ref], cwd=tmp_dir)
             if result.returncode != 0:
                 logger.error(f"Failed to checkout ref '{ref}'")
                 logger.error(result.stderr)
                 return None
+    else:
+        # Clone with depth 1 for speed (default branch)
+        result = run_git(["clone", "--depth", "1", url, str(tmp_dir)])
+        if result.returncode != 0:
+            logger.error(f"Failed to clone {url}")
+            logger.error(result.stderr)
+            return None
 
     # Get resolved commit SHA
     result = run_git(["rev-parse", "HEAD"], cwd=tmp_dir)
@@ -149,82 +183,170 @@ def copy_plugin_files(src: Path, dest: Path):
 
 def validate_plugin(plugin_path: Path) -> bool:
     """
-    Check if plugin folder contains expected files.
+    Check if plugin folder contains expected files and valid metadata.
     Returns True if valid, False with warning if suspicious.
     """
-    expected_files = ["board.py", "__init__.py", "config.sample.json"]
-    found = any((plugin_path / f).exists() for f in expected_files)
+    plugin_json = plugin_path / "plugin.json"
 
-    if not found:
-        logger.warning(
-            f"Plugin at {plugin_path} doesn't contain expected files "
-            f"({', '.join(expected_files)}). May not work correctly."
-        )
+    if not plugin_json.exists():
+        logger.warning(f"Plugin at {plugin_path} missing plugin.json")
         return False
+
+    # Load and validate metadata
+    try:
+        metadata = load_plugin_metadata(plugin_path)
+        if not metadata:
+            logger.warning(f"Plugin at {plugin_path} has invalid plugin.json")
+            return False
+
+        # Check for boards declaration
+        boards = metadata.get("boards", [])
+        if not boards:
+            logger.warning(f"Plugin at {plugin_path} declares no boards")
+            return False
+
+        # Verify each declared board module exists
+        for board in boards:
+            if isinstance(board, dict):
+                module_name = board.get("module", "board")
+            else:
+                # Legacy format support (simple list of board IDs)
+                module_name = "board"
+
+            module_file = plugin_path / f"{module_name}.py"
+
+            if not module_file.exists():
+                logger.warning(
+                    f"Plugin at {plugin_path} declares board module '{module_name}.py' but file not found"
+                )
+                return False
+
+        return True
+
+    except Exception as e:
+        logger.warning(f"Could not validate plugin at {plugin_path}: {e}")
+        return False
+
+
+def install_plugin_dependencies(plugin_path: Path) -> bool:
+    """
+    Install Python dependencies for a plugin.
+
+    Checks plugin.json for python_dependencies first, falls back to requirements.txt
+    for backward compatibility.
+
+    Args:
+        plugin_path: Path to the plugin directory
+
+    Returns:
+        True if dependencies were installed successfully or no dependencies exist,
+        False if installation failed
+    """
+    plugin_name = plugin_path.name
+    dependencies = []
+
+    # First, try to get dependencies from plugin.json
+    metadata = load_plugin_metadata(plugin_path)
+    if metadata:
+        deps = metadata.get("requirements", {}).get("python_dependencies", [])
+        if deps:
+            logger.debug(f"Found {len(deps)} dependencies in plugin.json")
+            dependencies = deps
+
+    # Fallback to requirements.txt if no dependencies in metadata
+    if not dependencies:
+        requirements_file = plugin_path / "requirements.txt"
+        if requirements_file.exists():
+            logger.debug(f"Using requirements.txt for dependencies")
+            try:
+                with open(requirements_file) as f:
+                    # Read dependencies, skip comments and empty lines
+                    dependencies = [
+                        line.strip()
+                        for line in f
+                        if line.strip() and not line.strip().startswith("#")
+                    ]
+            except Exception as e:
+                logger.error(f"Failed to read requirements.txt: {e}")
+                return False
+        else:
+            logger.debug(f"No dependencies found for plugin at {plugin_path}")
+            return True
+
+    if not dependencies:
+        logger.debug(f"No dependencies to install for plugin '{plugin_name}'")
+        return True
+
+    logger.info(f"Installing {len(dependencies)} dependenc(y/ies) for plugin '{plugin_name}'...")
+
+    # Install each dependency
+    for dep in dependencies:
+        logger.debug(f"  Installing: {dep}")
+        pip_cmd = [sys.executable, "-m", "pip", "install", dep]
+
+        try:
+            result = subprocess.run(
+                pip_cmd,
+                capture_output=True,
+                text=True,
+                check=False
+            )
+
+            if result.returncode != 0:
+                logger.error(f"Failed to install '{dep}' for '{plugin_name}'")
+                if result.stderr:
+                    logger.debug(f"pip error: {result.stderr}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error installing '{dep}' for '{plugin_name}': {e}")
+            return False
+
+    logger.info(f"✓ Dependencies installed for '{plugin_name}'")
     return True
 
 
 def get_plugin_id_from_repo(repo_path: Path) -> Optional[str]:
     """
-    Extract the canonical plugin ID from the plugin's __init__.py.
+    Extract the canonical plugin ID from the plugin's plugin.json.
 
     Args:
         repo_path: Path to the cloned repository
 
     Returns:
-        Plugin ID string if found, None if __plugin_id__ not present or error occurs
+        Plugin ID string if found, None if plugin.json not present or error occurs
     """
-    init_file = repo_path / "__init__.py"
+    metadata = load_plugin_metadata(repo_path)
 
-    if not init_file.exists():
-        logger.debug(f"No __init__.py found in {repo_path}")
+    if not metadata:
         return None
 
-    try:
-        # Load the __init__.py module dynamically
-        spec = importlib.util.spec_from_file_location("temp_plugin_init", init_file)
-        if spec and spec.loader:
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-
-            if hasattr(module, "__plugin_id__"):
-                plugin_id = module.__plugin_id__
-                logger.debug(f"Found __plugin_id__: {plugin_id}")
-                return plugin_id
-            else:
-                logger.warning(f"Plugin __init__.py missing required __plugin_id__ attribute")
-                return None
-    except Exception as e:
-        logger.warning(f"Could not read __plugin_id__ from {init_file}: {e}")
+    if "name" not in metadata:
+        logger.warning("Plugin metadata missing required 'name' field")
         return None
+
+    plugin_id = metadata["name"]
+    logger.debug(f"Found plugin name: {plugin_id}")
+    return plugin_id
 
 
 def get_preserve_patterns(plugin_path: Path) -> List[str]:
     """
-    Get list of file patterns to preserve from plugin's __init__.py.
+    Get list of file patterns to preserve from plugin's plugin.json.
     Falls back to DEFAULT_PRESERVE_PATTERNS if not specified.
     """
-    init_file = plugin_path / "__init__.py"
+    metadata = load_plugin_metadata(plugin_path)
 
-    if not init_file.exists():
-        logger.debug(f"No __init__.py found, using default preserve patterns")
+    if not metadata:
+        logger.debug("No plugin.json found, using default preserve patterns")
         return DEFAULT_PRESERVE_PATTERNS
 
-    try:
-        # Load the __init__.py module dynamically
-        spec = importlib.util.spec_from_file_location("plugin_init", init_file)
-        if spec and spec.loader:
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
+    if "preserve_files" in metadata:
+        patterns = metadata["preserve_files"]
+        logger.debug(f"Using plugin-specified preserve patterns: {patterns}")
+        return patterns
 
-            if hasattr(module, "__preserve_files__"):
-                patterns = module.__preserve_files__
-                logger.debug(f"Using plugin-specified preserve patterns: {patterns}")
-                return patterns
-    except Exception as e:
-        logger.debug(f"Could not read __preserve_files__ from {init_file}: {e}")
-
-    logger.debug(f"Using default preserve patterns")
+    logger.debug("Using default preserve patterns")
     return DEFAULT_PRESERVE_PATTERNS
 
 
@@ -318,8 +440,8 @@ def install_plugin(url: str, ref: Optional[str], name_override: Optional[str] = 
             plugin_name = get_plugin_id_from_repo(tmp_path)
             if not plugin_name:
                 logger.error(
-                    f"Could not determine plugin name. Plugin must have __plugin_id__ in __init__.py, "
-                    f"or use --name to specify manually."
+                    "Could not determine plugin name. Plugin must have 'name' field in plugin.json, "
+                    "or use --name to specify manually."
                 )
                 return None
             logger.info(f"Detected plugin ID: {plugin_name}")
@@ -344,6 +466,11 @@ def install_plugin(url: str, ref: Optional[str], name_override: Optional[str] = 
 
         # Validate plugin structure
         validate_plugin(plugin_dest)
+
+        # Install plugin dependencies
+        if not install_plugin_dependencies(plugin_dest):
+            logger.warning(f"Plugin '{plugin_name}' installed but dependency installation failed")
+            logger.warning(f"Check plugin.json or requirements.txt in: {plugin_dest}")
 
         logger.info(f"✓ Plugin '{plugin_name}' installed successfully (commit: {commit_sha[:7]})")
 
@@ -471,8 +598,8 @@ def cmd_list(args):
         return
 
     # Print table header
-    print(f"{'NAME':<20} {'STATUS':<12} {'COMMIT':<10}")
-    print("-" * 45)
+    print(f"{'NAME':<20} {'VERSION':<12} {'STATUS':<12} {'COMMIT':<10}")
+    print("-" * 57)
 
     for plugin in plugins:
         name = plugin["name"]
@@ -480,7 +607,14 @@ def cmd_list(args):
         status = "present" if plugin_path.exists() else "missing"
         commit = locked.get(name, {}).get("commit", "")[:7] if status == "present" else "-"
 
-        print(f"{name:<20} {status:<12} {commit:<10}")
+        # Get version from plugin.json
+        version = "-"
+        if status == "present":
+            metadata = load_plugin_metadata(plugin_path)
+            if metadata and "version" in metadata:
+                version = metadata["version"]
+
+        print(f"{name:<20} {version:<12} {status:<12} {commit:<10}")
 
 
 def cmd_sync(args):
@@ -529,25 +663,25 @@ def main():
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # Add command
-    add_parser = subparsers.add_parser("add", help="Add or update a plugin")
+    # Add command (aliases: install)
+    add_parser = subparsers.add_parser("add", aliases=["install"], help="Add or update a plugin")
     add_parser.add_argument("url", help="Git repository URL")
     add_parser.add_argument("--ref", help="Git ref (tag, branch, or SHA)")
     add_parser.add_argument("--name", help="Override plugin name (uses __plugin_id__ from repo by default)")
     add_parser.set_defaults(func=cmd_add)
 
-    # Remove command
-    rm_parser = subparsers.add_parser("rm", help="Remove a plugin")
-    rm_parser.add_argument("name", help="Plugin name to remove")
-    rm_parser.add_argument("--keep-config", action="store_true", help="Preserve config.json when removing")
-    rm_parser.set_defaults(func=cmd_rm)
+    # Remove command (aliases: rm, delete, uninstall)
+    remove_parser = subparsers.add_parser("remove", aliases=["rm", "delete", "uninstall"], help="Remove a plugin")
+    remove_parser.add_argument("name", help="Plugin name to remove")
+    remove_parser.add_argument("--keep-config", action="store_true", help="Preserve config.json when removing")
+    remove_parser.set_defaults(func=cmd_rm)
 
-    # List command
-    list_parser = subparsers.add_parser("list", help="List all plugins")
+    # List command (aliases: ls, show)
+    list_parser = subparsers.add_parser("list", aliases=["ls", "show"], help="List all plugins")
     list_parser.set_defaults(func=cmd_list)
 
-    # Sync command
-    sync_parser = subparsers.add_parser("sync", help="Install/update all plugins from plugins.json")
+    # Sync command (aliases: update)
+    sync_parser = subparsers.add_parser("sync", aliases=["update"], help="Install/update all plugins from plugins.json")
     sync_parser.set_defaults(func=cmd_sync)
 
     args = parser.parse_args()

@@ -1,0 +1,24 @@
+{
+  "name": "example_board",
+  "version": "1.0.0",
+  "description": "Example board module for demonstration",
+  "author": "NHL LED Scoreboard",
+  "enabled": true,
+
+  "boards": [
+    {
+      "id": "example_board",
+      "class_name": "ExampleBoard",
+      "module": "board"
+    }
+  ],
+
+  "requirements": {
+    "app_version": ">=2025.9.0",
+    "python_dependencies": []
+  },
+
+  "preserve_files": [
+    "config.json"
+  ]
+}

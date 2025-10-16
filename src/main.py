@@ -158,7 +158,9 @@ def run():
     from sbio.dimmer import Dimmer
     from sbio.screensaver import screenSaver
     from update_checker import UpdateChecker
-    from utils import scheduler_event_listener
+    from utils import get_or_create_cache, scheduler_event_listener
+
+    get_or_create_cache()  # Ensure cache is initialized after privilege drop
 
     # Enable rich tracebacks
     install(show_locals=True)
@@ -318,6 +320,6 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         print("Exiting NHL-LED-SCOREBOARD\n")
-        from utils import sb_cache
-        sb_cache.close()
+        from utils import get_or_create_cache
+        get_or_create_cache().close()
         sys.exit(0)

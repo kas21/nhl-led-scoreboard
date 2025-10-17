@@ -435,7 +435,7 @@ class Data:
                 self.needs_refresh = False
                 self.network_issues = False
                 break
-            except ValueError as error_message:
+            except (ValueError, TypeError) as error_message:
                 self.network_issues = True
                 debug.error("Failed to refresh the Overview. {} attempt remaining.".format(attempts_remaining))
                 debug.error(error_message)

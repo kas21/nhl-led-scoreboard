@@ -47,6 +47,36 @@ if [ -t 1 ]; then
   RESET=$(printf '\033[m')
 fi
 
+function download_nhl_setup() {
+  printf "${GREEN}%s${RESET}\n" "$1"
+  if [[ "$DEBIAN_VERSION" == "13"* ]]; then
+      if [ "$ARCH" = "aarch64" ]; then
+          echo "64-bit ARM architecture detected. Downloading and installing nhl_setup..."
+          wget https://github.com/falkyre/nhl-setup/releases/latest/download/nhl_setup.64 -O $SBHOME/nhl_setup
+          chmod +x $SBHOME/nhl_setup
+      elif [ "$ARCH" = "armv7l" ]; then
+          echo "32-bit ARM architecture detected. Downloading and installing nhl_setup..."
+          wget https://github.com/falkyre/nhl-setup/releases/latest/download/nhl_setup.32 -O $SBHOME/nhl_setup
+          chmod +x $SBHOME/nhl_setup
+      else
+          echo "Unsupported architecture for nhl_setup: $ARCH"
+      fi
+  elif [[ "$DEBIAN_VERSION" == "12"* ]]; then
+      if [ "$ARCH" = "aarch64" ]; then
+          echo "64-bit ARM architecture detected. Downloading and installing nhl_setup..."
+          wget https://github.com/falkyre/nhl-setup/releases/latest/download/nhl_setup.bookworm.64 -O $SBHOME/nhl_setup
+          chmod +x $SBHOME/nhl_setup
+      elif [ "$ARCH" = "armv7l" ]; then
+          echo "32-bit ARM architecture detected. Downloading and installing nhl_setup..."
+          wget https://github.com/falkyre/nhl-setup/releases/latest/download/nhl_setup.bookworm.32 -O $SBHOME/nhl_setup
+          chmod +x $SBHOME/nhl_setup
+      else
+          echo "Unsupported architecture for nhl_setup: $ARCH"
+      fi
+  fi
+}
+
+
 # Update upstream remote to nhl-led-scoreboard
 git remote -v | while read remote url extra; do
   case "$url" in
@@ -80,32 +110,7 @@ if [[ -a "${SBHOME}/nhl_setup" ]]; then
   LATEST_NHL_SETUP_VERSION=$(curl -s "https://lastversion-api.getpagespeed.com/falkyre/nhl-setup?version" | xargs)
   CURRENT_NHL_SETUP_VERSION=$($SBHOME/nhl_setup -v | awk '{print $2}')
   if [[ "$LATEST_NHL_SETUP_VERSION" != "$CURRENT_NHL_SETUP_VERSION" ]]; then
-    printf "${GREEN}%s${RESET}\n" "Newer version of nhl_setup found. Downloading..."
-    if [[ "$DEBIAN_VERSION" == "13"* ]]; then
-        if [ "$ARCH" = "aarch64" ]; then
-            echo "64-bit ARM architecture detected. Downloading and installing nhl_setup..."
-            wget https://github.com/falkyre/nhl-setup/releases/latest/download/nhl_setup.64 -O $SBHOME/nhl_setup
-            chmod +x $SBHOME/nhl_setup
-        elif [ "$ARCH" = "armv7l" ]; then
-            echo "32-bit ARM architecture detected. Downloading and installing nhl_setup..."
-            wget https://github.com/falkyre/nhl-setup/releases/latest/download/nhl_setup.32 -O $SBHOME/nhl_setup
-            chmod +x $SBHOME/nhl_setup
-        else
-            echo "Unsupported architecture for nhl_setup: $ARCH"
-        fi
-    elif [[ "$DEBIAN_VERSION" == "12"* ]]; then
-        if [ "$ARCH" = "aarch64" ]; then
-            echo "64-bit ARM architecture detected. Downloading and installing nhl_setup..."
-            wget https://github.com/falkyre/nhl-setup/releases/latest/download/nhl_setup.bookworm.64 -O $SBHOME/nhl_setup
-            chmod +x $SBHOME/nhl_setup
-        elif [ "$ARCH" = "armv7l" ]; then
-            echo "32-bit ARM architecture detected. Downloading and installing nhl_setup..."
-            wget https://github.com/falkyre/nhl-setup/releases/latest/download/nhl_setup.bookworm.32 -O $SBHOME/nhl_setup
-            chmod +x $SBHOME/nhl_setup
-        else
-            echo "Unsupported architecture for nhl_setup: $ARCH"
-        fi
-    fi
+    download_nhl_setup "Newer version of nhl_setup found. Downloading..."
     CURRENT_NHL_SETUP_VERSION=$($SBHOME/nhl_setup -v | awk '{print $2}')
     if [[ "$LATEST_NHL_SETUP_VERSION" == "$CURRENT_NHL_SETUP_VERSION" ]]; then
         printf "${GREEN}%s${RESET}\n" "nhl_setup updated to version $LATEST_NHL_SETUP_VERSION"
@@ -114,6 +119,19 @@ if [[ -a "${SBHOME}/nhl_setup" ]]; then
     fi
   else
     printf "${YELLOW}%s${RESET}\n" "nhl_setup is already at the latest version."
+  fi
+else
+  download_nhl_setup "nhl_setup not found. Downloading..."
+  if [[ -a "${SBHOME}/nhl_setup" ]]; then
+    LATEST_NHL_SETUP_VERSION=$(curl -s "https://lastversion-api.getpagespeed.com/falkyre/nhl-setup?version" | xargs)
+    CURRENT_NHL_SETUP_VERSION=$($SBHOME/nhl_setup -v | awk '{print $2}')
+    if [[ "$LATEST_NHL_SETUP_VERSION" == "$CURRENT_NHL_SETUP_VERSION" ]]; then
+        printf "${GREEN}%s${RESET}\n" "nhl_setup installed to version $LATEST_NHL_SETUP_VERSION"
+    else
+        printf "${RED}%s${RESET}\n" "nhl_setup install failed. Please run sb-upgrade again."
+    fi
+  else
+      printf "${RED}%s${RESET}\n" "nhl_setup download failed. Please run sb-upgrade again."
   fi
 fi
 

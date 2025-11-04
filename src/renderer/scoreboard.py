@@ -54,21 +54,20 @@ class ScoreboardRenderer:
             gradient = Image.open(get_file('assets/images/128x64_scoreboard_center_gradient.png'))
         
         self.matrix.draw_image((display_width/2,0), gradient, align="center")
-        
-        if self.status.is_scheduled(self.scoreboard.status):
+
+        if self.scoreboard.is_scheduled:
             self.draw_scheduled()
 
-        if self.status.is_live(self.scoreboard.status):
+        if self.scoreboard.is_live:
             self.draw_live()
 
-        if self.status.is_game_over(self.scoreboard.status):
+        if self.scoreboard.is_game_over:
             self.draw_final()
 
-        if self.status.is_final(self.scoreboard.status):
+        if self.scoreboard.is_final:
             self.draw_final()
 
-        if self.status.is_irregular(self.scoreboard.status):
-            '''TODO: Need to figure out the irregular status'''
+        if self.scoreboard.is_irregular:
             self.draw_irregular()
 
     def draw_scheduled(self):

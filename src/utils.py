@@ -362,7 +362,7 @@ def args():
         type=int,
     )
     parser.add_argument(
-        "--nhl-ssl-verify",
+        "--nhl-no-ssl-verify",
         action="store_true",
         help="Disable SSL certificate verification for NHL API calls",
         default=False,

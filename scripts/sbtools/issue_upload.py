@@ -204,6 +204,7 @@ def issue_upload(scoreboard_proc=None, supervisor_url=None):
     out.append("=============================")
     out.append("")
 
+    print("Gathering host info...")
     # Host Info
     host_info = fetch_fetch_info()
     version = get_version(root)
@@ -215,32 +216,38 @@ def issue_upload(scoreboard_proc=None, supervisor_url=None):
         out.append(platform.node())
 
     # Git Remotes
+    print("Gathering git remotes...")
     out.append("------------------------------------------------------")
     out.append("Git Remotes\n=================================")
     out += get_git_remotes(root)
 
+    print("Gathering OS info...")
     out.append("------------------------------------------------------")
     out.append("OS Info\n=================================")
     out += get_os_info()
 
     out.append("------------------------------------------------------")
     # Venv
+    print("Checking for venv and other paths...")
     venv_info, pip_list = get_venv_info()
     out.append(venv_info)
     out += find_paths()
 
     if os.path.isdir(os.path.expanduser("~/nhlsb-venv")):
+        print("Gathering pip list...")
         out.append("------------------------------------------------------")
         out.append("pip list\n=================================")
         out += pip_list
 
     # config.json
+    print("Reading and redacting config.json...")
     out.append("------------------------------------------------------")
     out.append("config.json\n")
     out.append(redact_config_json(root))
     out.append("")
 
     # scoreboard.log
+    print("Reading scoreboard.log...")
     log_contents = get_scoreboard_log(root)
     if log_contents:
         out.append("------------------------------------------------------")
@@ -248,16 +255,20 @@ def issue_upload(scoreboard_proc=None, supervisor_url=None):
         out += log_contents
 
     # Supervisor stuff
+    print("Checking for supervisor...")
     supervisor_ok, proxy = supervisor_installed(supervisor_url)
 
     if supervisor_ok:
+        print("Getting supervisor status...")
         out.append("------------------------------------------------------")
         out.append("supervisorctl status\n------------------------------------------------------")
         out += supervisor_status(proxy)
         out.append("------------------------------------------------------")
+        print("Getting supervisor stderr log...")
         out.append(f"{scoreboard_proc} stderr log, last 50kb\n=================================")
         out += supervisor_tail(proxy, scoreboard_proc, "stderr")
-        out.append(""")
+        out.append("")
+        print("Getting supervisor stdout log...")
         out.append("------------------------------------------------------")
         out.append(f"{scoreboard_proc} stdout log, last 50kb\n=================================")
         out += supervisor_tail(proxy, scoreboard_proc, "stdout")
@@ -268,6 +279,7 @@ def issue_upload(scoreboard_proc=None, supervisor_url=None):
     # Upload if supervisor works
     url = None
     if supervisor_ok:
+        print("Uploading to pastebin...")
         url = pastebinit(result)
         print("Take this url and paste it into your issue.  You can create an issue @ https://github.com/falkyre/nhl-led-scoreboard/issues")
         print(url)

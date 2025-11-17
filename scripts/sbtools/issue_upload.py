@@ -268,7 +268,10 @@ def issue_upload(scoreboard_proc=None, supervisor_url=None):
         out.append(f"{scoreboard_proc} stderr log, last 50kb\n=================================")
         out += supervisor_tail(proxy, scoreboard_proc, "stderr")
         out.append("")
+<<<<<<< HEAD
         print("Getting supervisor stdout log...")
+=======
+>>>>>>> bedb3efc06500627604ce2ce88676c1d081c6b53
         out.append("------------------------------------------------------")
         out.append(f"{scoreboard_proc} stdout log, last 50kb\n=================================")
         out += supervisor_tail(proxy, scoreboard_proc, "stdout")

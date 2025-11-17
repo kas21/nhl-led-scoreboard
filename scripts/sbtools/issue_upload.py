@@ -67,18 +67,21 @@ def get_version(root):
 def fetch_fetch_info():
     fetch_cmd = shutil.which("fastfetch") or shutil.which("neofetch")
     if fetch_cmd:
-        args = ["-l", "none"] if "fastfetch" in fetch_cmd else ["--off", "-stdout"]
+        args = ["--pipe", "-l", "none"] if "fastfetch" in fetch_cmd else ["--off", "--stdout"]
         try:
             output = subprocess.check_output([fetch_cmd] + args, text=True)
-            host_line = ""
             for line in output.splitlines():
                 if "Host" in line:
-                    host_line = line
-                    break
-            return host_line
+                    host_line = line.strip()
+                    if host_line:
+                        return host_line
         except Exception:
-            pass
-    return None
+            pass  # Fall through to platform info
+    else:
+        # If fast/neofetch not found, use platform
+        uname = platform.uname()
+        return f"Host: {uname.node} ({uname.system} {uname.release} {uname.machine})"
+
 
 def get_venv_info():
     venv_dir = os.path.expanduser("~/nhlsb-venv")
@@ -268,10 +271,7 @@ def issue_upload(scoreboard_proc=None, supervisor_url=None):
         out.append(f"{scoreboard_proc} stderr log, last 50kb\n=================================")
         out += supervisor_tail(proxy, scoreboard_proc, "stderr")
         out.append("")
-<<<<<<< HEAD
         print("Getting supervisor stdout log...")
-=======
->>>>>>> bedb3efc06500627604ce2ce88676c1d081c6b53
         out.append("------------------------------------------------------")
         out.append(f"{scoreboard_proc} stdout log, last 50kb\n=================================")
         out += supervisor_tail(proxy, scoreboard_proc, "stdout")

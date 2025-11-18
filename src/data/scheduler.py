@@ -18,7 +18,6 @@ from utils import args
 
 sb_logger = logging.getLogger("scoreboard")
 
-
 def _resolve_callable(ref: Any) -> Optional[Callable]:
     """
     Resolve a callable reference.
@@ -143,14 +142,29 @@ class SchedulerManager:
                 sb_logger.error("jobs_json provided but is neither JSON string nor list; ignoring and using normal scheduling.")
                 jobs_list = None
 
+        # Check to see if screensaver is currently running and stop it if so by running the screenSaverOFF job by modiying its next run time
+        existing_ids = self._get_existing_job_ids()
+        prefix = self.KNOWN_JOB_IDS["screenSaver_prefix"]
+        if self._job_prefix_exists(prefix, existing_ids):
+            try:
+                jobs = self.data.scheduler.get_jobs()
+                for job in jobs:
+                    if job.id.startswith(prefix) and job.id.endswith("OFF"):
+                        self.data.scheduler.reschedule_job(job.id, trigger='date')
+                        #job.modify(next_run_time=self.data.scheduler.now())
+                        sb_logger.info("Scheduled screensaver disable job to run immediately.")
+            
+            except Exception as e:
+                sb_logger.error(f"Failed to schedule screensaver disable job: {e}") 
+        # Remove all existing jobs no matter what to ensure a clean state before importing or adding jobs
+        try:
+            self.data.scheduler.remove_all_jobs()
+        except Exception as e:
+            sb_logger.debug(f"Unable to remove all jobs before import: {e}")
+        
         # If jobs_list provided, try to import via scheduler API or reconstruct jobs
         if jobs_list:
             sb_logger.info("Scheduling jobs from provided job list (import mode).")
-            # Clear existing jobs first to mirror import intent (import should replace)
-            try:
-                self.data.scheduler.remove_all_jobs()
-            except Exception as e:
-                sb_logger.debug(f"Unable to remove all jobs before import: {e}")
 
             # If the scheduler provides a direct import API, use it
             if hasattr(self.data.scheduler, "import_jobs"):
@@ -284,7 +298,7 @@ class SchedulerManager:
                     sb_logger.error(f"Failed to create screensaver manager: {e}")
                     screensaver_manager = None
             else:
-                sb_logger.debug("Screensaver job already scheduled (prefix=screenSaver), skipping add.")
+                sb_logger.debug("Screensaver job already scheduled (prefix=screenSaver), skipping add.")                        
 
         # Note: Motion sensor and MQTT startup have been removed from this module.
         # They should be started by the application boot logic (outside of schedule_jobs)

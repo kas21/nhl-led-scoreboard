@@ -961,13 +961,13 @@ def cmd_list(args):
             if update_info["status"] == "up_to_date":
                 status = "up-to-date"
             elif update_info["status"] == "update_available":
-                status = "update avail"
+                status = "update-avail"
             elif update_info["status"] == "unknown":
                 status = "present"
             else:
                 status = "present"
         else:
-            status = "not installed"
+            status = "missing"
 
         print(f"{name:<20} {version:<12} {status:<15} {commit:<10}")
 

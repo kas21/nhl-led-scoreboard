@@ -7,15 +7,18 @@ copied into src/boards/plugins/<name>, and tracked in plugins.lock.json
 for reproducible installs.
 
 Usage:
-    python plugins.py add NAME URL [--ref REF]
+    python plugins.py add URL [--ref REF] [--name NAME] [-f|--force]
     python plugins.py rm NAME [--keep-config]
     python plugins.py list
     python plugins.py sync [PLUGIN_NAME] [-f|--force] [-y|--yes]
     python plugins.py cleanup
 
+Add options:
+    -f, --force  Skip version requirement checks
+
 Sync options:
     PLUGIN_NAME  Optional plugin name to sync only that plugin
-    -f, --force  Force reinstall even if already up to date
+    -f, --force  Force reinstall even if already up to date and skip version checks
     -y, --yes    Skip confirmation prompts and install automatically
 
 Cleanup command:
@@ -28,12 +31,15 @@ import argparse
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+from packaging import version
 
 # Environment overrides for flexibility
 PLUGINS_DIR = Path(os.getenv("PLUGINS_DIR", "src/boards/plugins"))
@@ -45,6 +51,119 @@ PLUGINS_LOCK = Path(os.getenv("PLUGINS_LOCK", "plugins.lock.json"))
 DEFAULT_PRESERVE_PATTERNS = ["config.json", "*.csv", "data/*", "custom_*"]
 
 logger = logging.getLogger(__name__)
+
+
+def get_app_version() -> str:
+    """
+    Get the application version from the VERSION file.
+
+    Returns:
+        Version string, or "0.0.0" if file not found
+    """
+    version_file = Path("VERSION")
+    if version_file.exists():
+        try:
+            return version_file.read_text().strip()
+        except Exception as e:
+            logger.debug(f"Could not read VERSION file: {e}")
+    return "0.0.0"
+
+
+def check_version_requirement(current: str, requirement: str) -> bool:
+    """
+    Check if current version meets requirement.
+
+    Handles beta/pre-release versions by stripping the suffix for comparison.
+    e.g., "2025.11.03-beta" is treated as "2025.11.03"
+
+    Args:
+        current: Current version string (e.g., "2025.10.1" or "2025.11.03-beta")
+        requirement: Requirement string (e.g., ">=2025.09.00", "==1.0.0")
+
+    Returns:
+        True if requirement is met, False otherwise
+    """
+    try:
+        # Extract base version from beta/pre-release versions
+        # e.g., "2025.11.03-beta" -> "2025.11.03"
+        current_base = re.sub(r"[-+].*$", "", current)
+        current_ver = version.parse(current_base)
+
+        # Parse requirement (e.g., ">=2025.09.00")
+        match = re.match(r"^\s*(>=|>|<=|<|==|!=)\s*(.+)$", requirement)
+        if not match:
+            logger.warning(f"Invalid version requirement format: {requirement}")
+            return True  # Don't block if format is invalid
+
+        operator, required_version = match.groups()
+        required_ver = version.parse(required_version.strip())
+
+        # Check based on operator
+        if operator == ">=":
+            return current_ver >= required_ver
+        elif operator == ">":
+            return current_ver > required_ver
+        elif operator == "<=":
+            return current_ver <= required_ver
+        elif operator == "<":
+            return current_ver < required_ver
+        elif operator == "==":
+            return current_ver == required_ver
+        elif operator == "!=":
+            return current_ver != required_ver
+        else:
+            logger.warning(f"Unknown operator in requirement: {requirement}")
+            return True
+
+    except Exception as e:
+        logger.warning(f"Could not parse version requirement '{requirement}': {e}")
+        return True  # Don't block on parsing errors
+
+
+def check_plugin_requirements(plugin_path: Path, plugin_name: str) -> Tuple[bool, List[str]]:
+    """
+    Check if plugin requirements are met before installation.
+
+    Args:
+        plugin_path: Path to the plugin directory (can be temp clone)
+        plugin_name: Name of the plugin for logging
+
+    Returns:
+        Tuple of (requirements_met, list of error messages)
+    """
+    errors = []
+    metadata = load_plugin_metadata(plugin_path)
+
+    if not metadata:
+        # No metadata means no requirements to check
+        return True, []
+
+    requirements = metadata.get("requirements", {})
+    if not requirements:
+        return True, []
+
+    app_version = get_app_version()
+
+    # Check Python version requirement
+    python_req = requirements.get("python_version")
+    if python_req:
+        python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        if not check_version_requirement(python_version, python_req):
+            errors.append(
+                f"Plugin '{plugin_name}' requires Python {python_req}, "
+                f"but current version is {python_version}"
+            )
+
+    # Check app version requirement
+    app_req = requirements.get("app_version")
+    if app_req:
+        if not check_version_requirement(app_version, app_req):
+            errors.append(
+                f"Plugin '{plugin_name}' requires app version {app_req}, "
+                f"but current version is {app_version}"
+            )
+
+    return len(errors) == 0, errors
 
 
 def cleanup_pycache_directories() -> Tuple[int, int]:
@@ -738,6 +857,7 @@ def install_plugin(
     ref: Optional[str],
     name_override: Optional[str] = None,
     preserve_user_files: bool = True,
+    force: bool = False,
 ) -> Optional[Dict]:
     """
     Install or update a single plugin.
@@ -748,6 +868,7 @@ def install_plugin(
         ref: Git ref (tag, branch, SHA) to checkout
         name_override: Optional override for plugin name (ignores __plugin_id__)
         preserve_user_files: Whether to preserve user files during updates
+        force: Skip version requirement checks
 
     Returns:
         Lock entry dict on success, None on failure
@@ -775,6 +896,15 @@ def install_plugin(
                 )
                 return None
             logger.info(f"Detected plugin ID: {plugin_name}")
+
+        # Check version requirements before installing
+        if not force:
+            requirements_met, errors = check_plugin_requirements(tmp_path, plugin_name)
+            if not requirements_met:
+                for error in errors:
+                    logger.error(error)
+                logger.error(f"Plugin '{plugin_name}' requirements not met. Use --force to install anyway.")
+                return None
 
         plugin_dest = PLUGINS_DIR / plugin_name
         preserved_files = {}
@@ -823,7 +953,8 @@ def cmd_add(args):
     cleanup_cache_and_permissions(verbose=verbose)
 
     # Install the plugin (auto-detects name from __plugin_id__)
-    lock_entry = install_plugin(args.url, args.ref, args.name)
+    force = args.force if hasattr(args, 'force') else False
+    lock_entry = install_plugin(args.url, args.ref, args.name, force=force)
     if not lock_entry:
         logger.error(f"Failed to install plugin from {args.url}")
         sys.exit(1)
@@ -1107,7 +1238,7 @@ def cmd_sync(args):
 
         was_installed = (PLUGINS_DIR / name_hint).exists() if name_hint else False
 
-        lock_entry = install_plugin(url, ref, name_hint)
+        lock_entry = install_plugin(url, ref, name_hint, force=args.force)
         if lock_entry:
             lock_entries.append(lock_entry)
             if was_installed:
@@ -1145,6 +1276,7 @@ def main():
     add_parser.add_argument("url", help="Git repository URL")
     add_parser.add_argument("--ref", help="Git ref (tag, branch, or SHA)")
     add_parser.add_argument("--name", help="Override plugin name (uses __plugin_id__ from repo by default)")
+    add_parser.add_argument("-f", "--force", action="store_true", help="Skip version requirement checks")
     add_parser.set_defaults(func=cmd_add)
 
     # Remove command (aliases: rm, delete, uninstall)
@@ -1160,7 +1292,7 @@ def main():
     # Sync command (aliases: update)
     sync_parser = subparsers.add_parser("sync", aliases=["update"], help="Install/update all plugins from plugins.json")
     sync_parser.add_argument("plugin", nargs="?", help="Specific plugin name to sync (optional)")
-    sync_parser.add_argument("-f", "--force", action="store_true", help="Force reinstall even if up to date")
+    sync_parser.add_argument("-f", "--force", action="store_true", help="Force reinstall even if up to date and skip version checks")
     sync_parser.add_argument("-y", "--yes", action="store_true", help="Skip confirmation prompts")
     sync_parser.set_defaults(func=cmd_sync)
 

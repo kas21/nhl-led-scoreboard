@@ -228,14 +228,18 @@ class Boards:
         Check if current version meets requirement.
 
         Args:
-            current: Current version string (e.g., "2025.10.1")
+            current: Current version string (e.g., "2025.10.1" or "2025.11.03-beta")
             requirement: Requirement string (e.g., ">=2025.09.00", "==1.0.0")
 
         Returns:
             True if requirement is met, False otherwise
         """
         try:
-            current_ver = version.parse(current)
+            # Extract base version from beta/pre-release versions
+            # e.g., "2025.11.03-beta" -> "2025.11.03"
+            # This treats beta versions as equivalent to their base version for compatibility checks
+            current_base = re.sub(r"[-+].*$", "", current)
+            current_ver = version.parse(current_base)
 
             # Parse requirement (e.g., ">=2025.09.00")
             match = re.match(r"^\s*(>=|>|<=|<|==|!=)\s*(.+)$", requirement)

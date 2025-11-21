@@ -229,6 +229,52 @@ class PlayerStats:
 
         return stats
 
+@dataclass
+class StatsLeader:
+    """Individual player entry in stats leaders."""
+    id: int
+    first_name: str
+    last_name: str
+    sweater_number: int
+    headshot: str
+    team_abbrev: str
+    team_name :str
+    team_logo: str
+    position: str
+    value: int
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'StatsLeader':
+        """Create StatsLeader from API response."""
+        return cls(
+            id=data.get('id', 0),
+            first_name=data.get('firstName', {}).get('default', ''),
+            last_name=data.get('lastName', {}).get('default', ''),
+            sweater_number=data.get('sweaterNumber', 0),
+            headshot=data.get('headshot', ''),
+            team_abbrev=data.get('teamAbbrev', ''),
+            team_name=data.get('teamName', {}).get('default', ''),
+            team_logo=data.get('teamLogo', ''),
+            position=data.get('position', ''),
+            value=data.get('value', 0)
+        )
+
+@dataclass
+class StatsLeadersData:
+    """Stats leaders for a single category with metadata."""
+    category: str
+    leaders: List[StatsLeader]
+    fetched_at: datetime
+
+    @classmethod
+    def from_api_response(cls, category: str, raw_data: List[dict]) -> 'StatsLeadersData':
+        """Convert raw API response to structured data."""
+        leaders = [StatsLeader.from_dict(player) for player in raw_data]
+        return cls(
+            category=category,
+            leaders=leaders,
+            fetched_at=datetime.now()
+        )
 
 @dataclass
 class Player:

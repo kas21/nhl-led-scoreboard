@@ -7,7 +7,7 @@ import traceback
 from PIL import Image, ImageDraw
 
 from boards.base_board import BoardBase
-from nhl_api.data import get_skater_stats_leaders
+from nhl_api.workers import StatsLeadersWorker
 
 debug = logging.getLogger("scoreboard")
 
@@ -65,18 +65,19 @@ class StatsLeadersBoard(BoardBase):
                     debug.error(f"Stats leaders board unavailable. Missing API information for category: {category}")
                     return
 
-                # Use the imported function directly
-                leaders_data = get_skater_stats_leaders(category=category, limit=self.limit)
+                # Get data from cache instead of API call
+                leaders_data = StatsLeadersWorker.get_category(category)
 
-                if not leaders_data or category not in leaders_data:
-                    debug.error(f"Stats leaders board unavailable. Missing API information for category: {category}")
-                    return
+
+                if not leaders_data:
+                    debug.warning(f"Stats leaders board: No cached data for {category}, skipping")
+                    continue
 
                 # Calculate image height (header + players, using dynamic font_height)
                 im_height = ((self.limit + 1) * self.font_height)  # header + configured number of players
 
                 # Create and draw the image
-                image = self.draw_leaders(category, leaders_data[category], im_height, self.matrix.width)
+                image = self.draw_leaders(category, leaders_data.leaders, im_height, self.matrix.width)
 
                 # Initial position (start at top)
                 i = 0
@@ -115,12 +116,12 @@ class StatsLeadersBoard(BoardBase):
         row_pos += row_height
 
         # Draw each player's stats
-        for player in leaders_data:
-            # Get player info
-            last_name = player['lastName']['default']
-            abbrev = player['teamAbbrev']
-            stat = str(player['value'])
-            rank = str(leaders_data.index(player) + 1)
+        for idx, player in enumerate(leaders_data):
+            # Get player info from structured data
+            last_name = player.last_name
+            abbrev = player.team_abbrev
+            stat = str(player.value)
+            rank = str(idx + 1)
 
             # Get team colors
             team_id = self.data.teams_info_by_abbrev[abbrev].details.id

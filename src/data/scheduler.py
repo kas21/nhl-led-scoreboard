@@ -11,6 +11,7 @@ from api.weather.ecWeather import ecWxWorker
 from api.weather.nwsAlerts import nwsWxAlerts
 from api.weather.owmWeather import owmWxWorker
 from api.weather.wxForecast import wxForecast
+from nhl_api.workers import StatsLeadersWorker
 from sbio.dimmer import Dimmer
 from sbio.screensaver import screenSaver
 from update_checker import UpdateChecker
@@ -83,6 +84,7 @@ class SchedulerManager:
         "UpdateChecker": "updatecheck",
         "Dimmer": "Dimmer",
         "screenSaver_prefix": "screenSaver",
+        "statsLeadersWorker": "statsLeadersWorker",
     }
 
     def __init__(self, data, matrix, sleep_event):
@@ -153,15 +155,15 @@ class SchedulerManager:
                         self.data.scheduler.reschedule_job(job.id, trigger='date')
                         #job.modify(next_run_time=self.data.scheduler.now())
                         sb_logger.info("Scheduled screensaver disable job to run immediately.")
-            
+
             except Exception as e:
-                sb_logger.error(f"Failed to schedule screensaver disable job: {e}") 
+                sb_logger.error(f"Failed to schedule screensaver disable job: {e}")
         # Remove all existing jobs no matter what to ensure a clean state before importing or adding jobs
         try:
             self.data.scheduler.remove_all_jobs()
         except Exception as e:
             sb_logger.debug(f"Unable to remove all jobs before import: {e}")
-        
+
         # If jobs_list provided, try to import via scheduler API or reconstruct jobs
         if jobs_list:
             sb_logger.info("Scheduling jobs from provided job list (import mode).")
@@ -263,6 +265,17 @@ class SchedulerManager:
             else:
                 sb_logger.debug(f"Weather forecast already scheduled (id={job_id}), skipping add.")
 
+        # stats leaders
+        # we could add conditional logic to only pull this if its enabled
+        # but for nwo we will just pull the data and cache it.  It's minimal.
+        job_id = self.KNOWN_JOB_IDS["statsLeadersWorker"]
+        if not self._job_exists(job_id, existing_ids):
+            StatsLeadersWorker(self.data, self.data.scheduler)
+            existing_ids.append(job_id)
+            sb_logger.info(f"Scheduled stats leaders worker (id={job_id})")
+        else:
+            sb_logger.debug(f"Stats leaders worker already scheduled (id={job_id}), skipping add.")
+
         # update checker
         if self.commandArgs.updatecheck:
             job_id = self.KNOWN_JOB_IDS["UpdateChecker"]
@@ -298,7 +311,7 @@ class SchedulerManager:
                     sb_logger.error(f"Failed to create screensaver manager: {e}")
                     screensaver_manager = None
             else:
-                sb_logger.debug("Screensaver job already scheduled (prefix=screenSaver), skipping add.")                        
+                sb_logger.debug("Screensaver job already scheduled (prefix=screenSaver), skipping add.")
 
         # Note: Motion sensor and MQTT startup have been removed from this module.
         # They should be started by the application boot logic (outside of schedule_jobs)

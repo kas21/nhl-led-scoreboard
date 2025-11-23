@@ -1001,6 +1001,11 @@ def cmd_add(args):
 
 def cmd_rm(args):
     """Remove a plugin from plugins.json and delete its files."""
+    # Clean up cache and fix permissions before removing
+    # This prevents issues with root-owned files blocking removal
+    verbose = args.verbose if hasattr(args, 'verbose') else False
+    cleanup_cache_and_permissions(verbose=verbose)
+
     # Always write to user's plugins.json
     plugins_json_path = PLUGINS_JSON_USER
 

@@ -19,6 +19,7 @@ dependencies = [
     "lastversion>=1.1.6",
     "nameparser>=1.0.6",
     "noaa-sdk>=0.1.18",
+    "packaging>=25.0",
     "paho-mqtt>=2.1.0",
     "pillow==11.1.0",
     "regex>=2020.4.4",

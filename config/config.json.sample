@@ -13,7 +13,9 @@
 		"sog_display_frequency": 4,
 		"goal_animations": {
         	"pref_team_only": true
-    	}
+    	},
+		"disable_penalty_animation": false,
+		"show_power_play_details": false
 	},
 
 	"states":{
@@ -55,7 +57,9 @@
 			"preferred_standings_only": true,
 			"standing_type": "division",
 			"divisions": "atlantic",
-			"conference": "eastern"
+			"conference": "eastern",
+			"wildcard_limit": 4,
+			"large_font": false
 		},
 		"clock": {
 			"duration": 15,
@@ -74,8 +78,9 @@
 			"owm_apikey": "",
 			"update_freq": 5,
 			"show_on_clock": true,
-			            "forecast_enabled": false,
-			            "forecast_show_today": false,			"forecast_days": 3,
+			"forecast_enabled": false,
+			"forecast_show_today": false,
+			"forecast_days": 3,
 			"forecast_update": 1
 		},
         "wxalert": {
@@ -91,19 +96,22 @@
 		"player_stats": {
 			"rotation_rate": 7,
 			"players": [
-				"8471214", 
+				"8471214",
 				"8480313",
-				"8471675", 
+				"8471675",
 				"8478402"
 			]
 		},
 		"stats_leaders": {
-			"rotation_rate": 7,
+			"rotation_rate": 5,
 			"categories": [
-				"goals", 
+				"goals",
 				"assists",
 				"points"
-			]
+			],
+			"use_large_font": false,
+			"scroll_speed": 0.2,
+			"limit": 10
 		}
 	},
 	"sbio": {

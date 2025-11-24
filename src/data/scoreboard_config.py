@@ -180,11 +180,12 @@ class ScoreboardConfig:
             pass
 
         # Stats Leaders
-        try:
-            self.stats_leaders_rotation_rate = json["boards"]["stats_leaders"]["rotation_rate"]
-            self.stats_leaders_categories = json["boards"]["stats_leaders"]["categories"]
-        except KeyError:
-            pass
+        stats_leaders = json["boards"].get("stats_leaders", {})
+        self.stats_leaders_rotation_rate = stats_leaders.get("rotation_rate", 5)
+        self.stats_leaders_categories = stats_leaders.get("categories", ["goals", "assists", "points"])
+        self.stats_leaders_use_large_font = stats_leaders.get("use_large_font", True)
+        self.stats_leaders_scroll_speed = stats_leaders.get("scroll_speed", 0.2)
+        self.stats_leaders_limit = stats_leaders.get("limit", 10)
 
         # Clock
         self.clock_board_duration = json["boards"]["clock"]["duration"]

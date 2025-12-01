@@ -14,6 +14,11 @@ DEBIAN_VERSION=$(cat /etc/debian_version)
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd "${DIR}"
 
+# Activate virtual environment if it exists
+if [ -f "$HOME/nhlsb-venv/bin/activate" ]; then
+  . "$HOME/nhlsb-venv/bin/activate"
+fi
+
 # Don't run as root
 if [ $(id -u) -eq 0 ]; then
   tput bold; echo "$(tput setaf 9)You do not need to run this script using sudo, it will handle sudo as required$(tput setaf 9)" ; tput sgr0
@@ -163,9 +168,9 @@ if git pull --rebase --stat origin main; then
        if ! git diff -s --exit-code HEAD "$last_commit" requirements.txt; then
           printf "${GREEN}%s${RESET}\n" "New python library requirements for this version, installing now"
           if [ -n "$VIRTUAL_ENV" ]; then
-                pip3 install -U -r requirements.txt
+                $VIRTUAL_ENV/bin/pip3 install -U -r requirements.txt
           else
-                sudo pip3 install -U -r requirements.txt
+             printf "${YELLOW}%s${RESET}\n" "Python virtual environment not active. Skipping dependency installation."
           fi
        else
           printf "${YELLOW}%s${RESET}\n" "No new python libraries required to be installed."

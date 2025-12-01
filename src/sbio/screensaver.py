@@ -44,10 +44,10 @@ class screenSaver(object):
         if self.startsaver and self.stopsaver is not None:
             self.shifted_time = datetime.time(datetime.now() + timedelta(minutes=5))
             # Check to see if the current time is greater than start time but less than stop time.  If so, change the start time hour and min
-            if (self.shifted_time > self.startsaver):
-                scheduler.add_job(self.runSaver, 'cron', hour=self.shifted_time.hour,minute=self.shifted_time.minute,id='screenSaverON',misfire_grace_time=None)
-            else:
+            if (self.shifted_time > self.startsaver) and (self.shifted_time < self.stopsaver):
                 scheduler.add_job(self.runSaver, 'cron', hour=self.startsaver.hour,minute=self.startsaver.minute,id='screenSaverON',misfire_grace_time=None)
+            else:
+                scheduler.add_job(self.runSaver, 'cron', hour=self.shifted_time.hour,minute=self.shifted_time.minute,id='screenSaverON',misfire_grace_time=None)
 
             scheduler.add_job(self.stopSaver, 'cron', hour=self.stopsaver.hour, minute=self.stopsaver.minute,id='screenSaverOFF',misfire_grace_time=None)
             startrun = self.scheduler.get_job('screenSaverON').next_run_time

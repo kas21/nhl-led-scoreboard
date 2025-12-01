@@ -9,12 +9,12 @@ Click on button to go to release notes.
 
 | Latest Stable | Latest nhl_setup |
 | --- | --- |
-|[![GitHub release (latest by date)](https://badgen.net/github/release/falkyre/nhl-led-scoreboard/stable?label=Version)](https://github.com/falkyre/nhl-led-scoreboard/releases/latest)|[![GitHub release (latest by date)](https://badgen.net/github/release/falkyre/nhl-setup/stable?label=Version)](https://github.com/falkyre/nhl-setup/releases/latest) |
+|[![GitHub release (latest by date)](https://img.shields.io/github/v/release/falkyre/nhl-led-scoreboard?sort=date&display_name=release&cacheSeconds=600)](https://github.com/falkyre/nhl-led-scoreboard/releases/latest)|[![GitHub release (latest by date)](https://img.shields.io/github/v/release/falkyre/nhl-setup?sort=date&display_name=release&cacheSeconds=600)](https://github.com/falkyre/nhl-setup/releases/latest) |
 
 # NHL LED Scoreboard Raspberry Pi Image 
 
 [![Create Release - Image](https://github.com/falkyre/nhl-led-scoreboard-img/actions/workflows/main.yml/badge.svg)](https://github.com/falkyre/nhl-led-scoreboard-img/actions/workflows/main.yml)
-[![GitHub release (latest by date)](https://badgen.net/github/release/falkyre/nhl-led-scoreboard-img?label=Version)](https://github.com/falkyre/nhl-led-scoreboard-img/releases/latest)
+[![GitHub release (latest by date)](https://badgers.space/github/release/falkyre/nhl-led-scoreboard-img?label=Version)](https://github.com/falkyre/nhl-led-scoreboard-img/releases/latest)
 
 [![discord button](assets/images/discord_button.png)](https://discord.gg/CWa5CzK)
 # IMPORTANT (PLEASE READ)
@@ -29,6 +29,7 @@ Click on button to go to release notes.
 * Raspberry Pi 4
 ## Only Supported RGB Adapters
 * Adafruit RGB Bonnet or HAT
+* Adafruit Triple LED Matrix Bonnet
 * [Electrodragon RGB Matrix Panel Drive board](https://www.electrodragon.com/product/rgb-matrix-panel-drive-board-for-raspberry-pi-v2/)
 ## Only Supported OS (these have been tested)
 * rpi OS Bookworm (32 bit only, 64 bit not tested) or higher (Trixie 32 bit or 64 bit) - **lite vesion only**

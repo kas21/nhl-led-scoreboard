@@ -5,7 +5,6 @@ fastjsonschema>=2.14.4
 geopy
 ipinfo
 gpiozero
-nhl-api-py==2.18.0
 noaa-sdk>=0.1.18
 python-tsl2591==0.2.0
 regex>=2020.4.4
@@ -15,7 +14,8 @@ nameparser>=1.0.6
 pillow==11.1.0
 dbus-python
 iso6709
-paho-mqtt
+packaging>=25.0
+paho-mqtt>=2.1.0
 rich
 richcolorlog==1.44.12
 RGBMatrixEmulator
@@ -24,4 +24,6 @@ diskcache
 backoff
 bottleneck==1.4.2
 pandas==2.2.3
-env-canada>=0.11.3
+env-canada>=0.12.1
+httpx==0.28.1
+watchdog

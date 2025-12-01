@@ -70,6 +70,34 @@
       "position": ["50%", 6],
       "align": "center-top"
     },
+    "pp_badge_home_time": {
+      "position": ["100%", "100%"],
+      "align": "right-bottom",
+      "font": "small"
+    },
+    "pp_badge_home": {
+      "position": [-2, 0],
+      "relative": {
+        "to": "pp_badge_home_time",
+        "align": "left"
+      },
+      "font": "small",
+      "align": "right"
+    },
+    "pp_badge_away_time": {
+      "position": ["0%", "100%"],
+      "align": "left-bottom",
+      "font": "small"
+    },
+    "pp_badge_away": {
+      "position":[2, 0],
+      "relative": {
+        "to": "pp_badge_away_time",
+        "align": "right"
+      },
+      "font": "small",
+      "align": "left"
+    },
     "irregular_status": {
       "position": ["50%", 6],
       "align": "center-top"
@@ -77,17 +105,87 @@
 
   },
   "goal":{
-    "scorer_info":{
-      "hashtag_dots":{
-        "position": [0, 8],
-        "font": "medium_2",
+    "header": {
+      "position": [1,1],
+      "align":"left"
+    },
+    "hashtag_dots": {
+      "position":[1,2],
+      "relative": {
+        "to": "header",
+        "align":"left-bottom"
+      }
+    },
+    "scorer_number": {
+      "position": [12,2],
+      "relative": {
+        "to": "header",
+        "align":"left-bottom"
+      },
+      "font":"medium_2"
+    },
+    "badge": {
+      "position": [-12,11],
+      "relative":{
+        "to": "scorer_number",
         "align": "left"
+      }
+    },
+    "scorer_first_name": {
+      "position": [2,0],
+      "relative":{
+        "to": "badge",
+        "align": "right-top"
+      }
+    },
+    "scorer_last_name": {
+      "position": [0, 1],
+      "relative":{
+        "to": "scorer_first_name",
+        "align": "left-bottom"
+      }
+    }
+  },
+  "assists":{
+    "header": {
+      "position": [1,1],
+      "align":"left"
+    },
+    "scorer_last_name": {
+      "position": [0,1],
+      "relative":{
+        "to": "header",
+        "align": "left-bottom"
+      }
+    },
+    "assists_header": {
+      "position": [0,2],
+      "relative":{
+        "to": "scorer_last_name",
+        "align": "left-bottom"
+      }
+    },
+    "assist1_last_name": {
+      "position": [0, 2],
+      "relative":{
+        "to": "assists_header",
+        "align": "left-bottom"
+      }
+    },"assist2_last_name": {
+      "position": [0, 1],
+      "relative":{
+        "to": "assist1_last_name",
+        "align": "left-bottom"
       }
     }
   },
   "penalty":{
+    "header": {
+      "position": [1,1],
+      "align":"left"
+    },
     "team_name":{
-      "position": [1, 9]
+      "position": [1, 8]
     },
     "hashtag_dots":{
       "position": [2, 0],

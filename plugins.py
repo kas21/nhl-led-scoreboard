@@ -7,22 +7,39 @@ copied into src/boards/plugins/<name>, and tracked in plugins.lock.json
 for reproducible installs.
 
 Usage:
-    python plugins.py add NAME URL [--ref REF]
+    python plugins.py add URL [--ref REF] [--name NAME] [-f|--force]
     python plugins.py rm NAME [--keep-config]
     python plugins.py list
-    python plugins.py sync
+    python plugins.py sync [PLUGIN_NAME] [-f|--force] [-y|--yes]
+    python plugins.py cleanup
+
+Add options:
+    -f, --force  Skip version requirement checks
+
+Sync options:
+    PLUGIN_NAME  Optional plugin name to sync only that plugin
+    -f, --force  Force reinstall even if already up to date and skip version checks
+    -y, --yes    Skip confirmation prompts and install automatically
+
+Cleanup command:
+    Automatically runs before add/sync operations to clean up cache files
+    and fix root-owned file permissions that could block plugin updates.
+    Can also be run manually with 'python plugins.py cleanup'
 """
 
 import argparse
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
+
+from packaging import version
 
 # Environment overrides for flexibility
 PLUGINS_DIR = Path(os.getenv("PLUGINS_DIR", "src/boards/plugins"))
@@ -34,6 +51,324 @@ PLUGINS_LOCK = Path(os.getenv("PLUGINS_LOCK", "plugins.lock.json"))
 DEFAULT_PRESERVE_PATTERNS = ["config.json", "*.csv", "data/*", "custom_*"]
 
 logger = logging.getLogger(__name__)
+
+
+def get_app_version() -> str:
+    """
+    Get the application version from the VERSION file.
+
+    Returns:
+        Version string, or "0.0.0" if file not found
+    """
+    version_file = Path("VERSION")
+    if version_file.exists():
+        try:
+            return version_file.read_text().strip()
+        except Exception as e:
+            logger.debug(f"Could not read VERSION file: {e}")
+    return "0.0.0"
+
+
+def check_version_requirement(current: str, requirement: str) -> bool:
+    """
+    Check if current version meets requirement.
+
+    Handles beta/pre-release versions by stripping the suffix for comparison.
+    e.g., "2025.11.03-beta" is treated as "2025.11.03"
+
+    Args:
+        current: Current version string (e.g., "2025.10.1" or "2025.11.03-beta")
+        requirement: Requirement string (e.g., ">=2025.09.00", "==1.0.0")
+
+    Returns:
+        True if requirement is met, False otherwise
+    """
+    try:
+        # Extract base version from beta/pre-release versions
+        # e.g., "2025.11.03-beta" -> "2025.11.03"
+        current_base = re.sub(r"[-+].*$", "", current)
+        current_ver = version.parse(current_base)
+
+        # Parse requirement (e.g., ">=2025.09.00")
+        match = re.match(r"^\s*(>=|>|<=|<|==|!=)\s*(.+)$", requirement)
+        if not match:
+            logger.warning(f"Invalid version requirement format: {requirement}")
+            return True  # Don't block if format is invalid
+
+        operator, required_version = match.groups()
+        required_ver = version.parse(required_version.strip())
+
+        # Check based on operator
+        if operator == ">=":
+            return current_ver >= required_ver
+        elif operator == ">":
+            return current_ver > required_ver
+        elif operator == "<=":
+            return current_ver <= required_ver
+        elif operator == "<":
+            return current_ver < required_ver
+        elif operator == "==":
+            return current_ver == required_ver
+        elif operator == "!=":
+            return current_ver != required_ver
+        else:
+            logger.warning(f"Unknown operator in requirement: {requirement}")
+            return True
+
+    except Exception as e:
+        logger.warning(f"Could not parse version requirement '{requirement}': {e}")
+        return True  # Don't block on parsing errors
+
+
+def check_plugin_requirements(plugin_path: Path, plugin_name: str) -> Tuple[bool, List[str]]:
+    """
+    Check if plugin requirements are met before installation.
+
+    Args:
+        plugin_path: Path to the plugin directory (can be temp clone)
+        plugin_name: Name of the plugin for logging
+
+    Returns:
+        Tuple of (requirements_met, list of error messages)
+    """
+    errors = []
+    metadata = load_plugin_metadata(plugin_path)
+
+    if not metadata:
+        # No metadata means no requirements to check
+        return True, []
+
+    requirements = metadata.get("requirements", {})
+    if not requirements:
+        return True, []
+
+    app_version = get_app_version()
+
+    # Check Python version requirement
+    python_req = requirements.get("python_version")
+    if python_req:
+        python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        if not check_version_requirement(python_version, python_req):
+            errors.append(
+                f"Plugin '{plugin_name}' requires Python {python_req}, "
+                f"but current version is {python_version}"
+            )
+
+    # Check app version requirement
+    app_req = requirements.get("app_version")
+    if app_req:
+        if not check_version_requirement(app_version, app_req):
+            errors.append(
+                f"Plugin '{plugin_name}' requires app version {app_req}, "
+                f"but current version is {app_version}"
+            )
+
+    return len(errors) == 0, errors
+
+
+def cleanup_pycache_directories() -> Tuple[int, int]:
+    """
+    Delete all __pycache__ directories in the project.
+
+    Returns:
+        Tuple of (removed_count, failed_count)
+    """
+    cache_dirs = []
+
+    # Find all __pycache__ directories
+    try:
+        for root, dirs, _ in os.walk("."):
+            if "__pycache__" in dirs:
+                cache_dirs.append(Path(root) / "__pycache__")
+    except Exception as e:
+        logger.debug(f"Error scanning for cache directories: {e}")
+        return 0, 0
+
+    if not cache_dirs:
+        logger.debug("No __pycache__ directories found")
+        return 0, 0
+
+    removed = 0
+    failed = 0
+
+    for cache_dir in cache_dirs:
+        try:
+            shutil.rmtree(cache_dir)
+            removed += 1
+            logger.debug(f"Removed: {cache_dir}")
+        except PermissionError:
+            # Try with sudo if we have permission
+            try:
+                result = subprocess.run(
+                    ["sudo", "-n", "rm", "-rf", str(cache_dir)],
+                    capture_output=True,
+                    timeout=5
+                )
+                if result.returncode == 0:
+                    removed += 1
+                    logger.debug(f"Removed (with sudo): {cache_dir}")
+                else:
+                    failed += 1
+                    logger.debug(f"Failed to remove: {cache_dir}")
+            except (subprocess.SubprocessError, FileNotFoundError):
+                failed += 1
+                logger.debug(f"Failed to remove: {cache_dir}")
+        except Exception as e:
+            failed += 1
+            logger.debug(f"Error removing {cache_dir}: {e}")
+
+    return removed, failed
+
+
+def cleanup_sb_cache_dir() -> bool:
+    """
+    Clean up /tmp/sb_cache directory if it's owned by root.
+
+    Returns:
+        True if cleanup succeeded or not needed, False on failure
+    """
+    sb_cache = Path("/tmp/sb_cache")
+
+    if not sb_cache.exists():
+        logger.debug("/tmp/sb_cache does not exist")
+        return True
+
+    try:
+        # Check ownership
+        import stat
+        st = sb_cache.stat()
+
+        # If not owned by root (uid 0), no cleanup needed
+        if st.st_uid != 0:
+            logger.debug(f"/tmp/sb_cache is owned by uid {st.st_uid}, not root")
+            return True
+
+        # Owned by root, try to remove it
+        logger.debug("/tmp/sb_cache is owned by root, attempting removal")
+
+        try:
+            shutil.rmtree(sb_cache)
+            logger.debug("Removed /tmp/sb_cache")
+            return True
+        except PermissionError:
+            # Try with sudo
+            try:
+                result = subprocess.run(
+                    ["sudo", "-n", "rm", "-rf", str(sb_cache)],
+                    capture_output=True,
+                    timeout=5
+                )
+                if result.returncode == 0:
+                    logger.debug("Removed /tmp/sb_cache (with sudo)")
+                    return True
+                else:
+                    logger.debug("Failed to remove /tmp/sb_cache with sudo")
+                    return False
+            except (subprocess.SubprocessError, FileNotFoundError):
+                logger.debug("Could not remove /tmp/sb_cache")
+                return False
+    except Exception as e:
+        logger.debug(f"Error checking /tmp/sb_cache: {e}")
+        return True  # Don't fail the entire operation
+
+
+def fix_root_owned_files() -> Tuple[int, int]:
+    """
+    Find and fix ownership of root-owned files (excluding __pycache__).
+
+    Returns:
+        Tuple of (fixed_count, failed_count)
+    """
+    # Find root-owned files, excluding __pycache__ directories
+    try:
+        result = subprocess.run(
+            ["find", ".", "-user", "root", "-not", "-path", "*/__pycache__/*", "-not", "-name", "__pycache__"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        if result.returncode != 0:
+            logger.debug("Could not search for root-owned files (not running as root or sudo)")
+            return 0, 0
+
+        root_files = [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
+
+        if not root_files:
+            logger.debug("No root-owned files found")
+            return 0, 0
+
+        logger.debug(f"Found {len(root_files)} root-owned file(s)")
+
+        # Determine target user
+        target_user = os.environ.get("SUDO_USER") or os.environ.get("USER") or "pi"
+        logger.debug(f"Target user for ownership: {target_user}")
+
+        # Try to fix ownership
+        fixed = 0
+        failed = 0
+
+        for file_path in root_files:
+            try:
+                # Try with sudo
+                result = subprocess.run(
+                    ["sudo", "-n", "chown", "-R", f"{target_user}:{target_user}", file_path],
+                    capture_output=True,
+                    timeout=5
+                )
+
+                if result.returncode == 0:
+                    fixed += 1
+                    logger.debug(f"Fixed ownership: {file_path}")
+                else:
+                    failed += 1
+                    logger.debug(f"Failed to fix ownership: {file_path}")
+            except (subprocess.SubprocessError, FileNotFoundError, Exception) as e:
+                failed += 1
+                logger.debug(f"Error fixing ownership of {file_path}: {e}")
+
+        return fixed, failed
+
+    except Exception as e:
+        logger.debug(f"Error searching for root-owned files: {e}")
+        return 0, 0
+
+
+def cleanup_cache_and_permissions(verbose: bool = False) -> bool:
+    """
+    Perform cache cleanup and permission fixes.
+    This integrates the functionality from scripts/sbtools/sb-cleanup-cache.
+
+    Args:
+        verbose: Whether to show detailed output
+
+    Returns:
+        True if cleanup succeeded, False if there were errors (non-fatal)
+    """
+    if verbose:
+        logger.info("Cleaning up cache files and fixing permissions...")
+
+    # Clean up __pycache__ directories
+    removed, failed = cleanup_pycache_directories()
+    if verbose and removed > 0:
+        logger.info(f"✓ Removed {removed} __pycache__ director(y/ies)")
+    if failed > 0:
+        logger.debug(f"Could not remove {failed} __pycache__ director(y/ies)")
+
+    # Clean up /tmp/sb_cache
+    sb_cache_ok = cleanup_sb_cache_dir()
+    if verbose and sb_cache_ok:
+        logger.debug("✓ /tmp/sb_cache cleanup completed")
+
+    # Fix root-owned files
+    fixed, failed_perms = fix_root_owned_files()
+    if verbose and fixed > 0:
+        logger.info(f"✓ Fixed ownership of {fixed} root-owned file(s)")
+    if failed_perms > 0:
+        logger.debug(f"Could not fix {failed_perms} root-owned file(s)")
+
+    # Return success even if some operations failed (they're often permission-related and non-fatal)
+    return True
 
 
 def get_plugins_json_path() -> Path:
@@ -111,6 +446,101 @@ def run_git(args: List[str], cwd: Optional[Path] = None) -> subprocess.Completed
     cmd = ["git"] + args
     logger.debug(f"Running: {' '.join(cmd)} (cwd={cwd})")
     return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+
+
+def get_remote_commit(url: str, ref: Optional[str] = None) -> Optional[str]:
+    """
+    Get the commit SHA from remote repository using git ls-remote.
+
+    Args:
+        url: Git repository URL
+        ref: Git ref (tag, branch, SHA) to check. If None, uses default branch
+
+    Returns:
+        Commit SHA string, or None on failure
+    """
+    # If no ref specified, use HEAD to get default branch
+    ref_to_check = ref if ref else "HEAD"
+
+    # Use git ls-remote to get commit SHA without cloning
+    result = run_git(["ls-remote", url, ref_to_check])
+
+    if result.returncode != 0:
+        logger.debug(f"Failed to get remote commit for {ref_to_check}: {result.stderr}")
+        return None
+
+    # Parse output (format: "commit_sha\trefs/...")
+    lines = result.stdout.strip().split("\n")
+    if not lines or not lines[0]:
+        return None
+
+    commit_sha = lines[0].split()[0] if lines[0] else None
+    logger.debug(f"Remote commit for {ref_to_check}: {commit_sha}")
+    return commit_sha
+
+
+def check_plugin_update_available(plugin_name: str, url: str, ref: Optional[str]) -> Dict:
+    """
+    Check if an update is available for a plugin by comparing commits.
+
+    Args:
+        plugin_name: Name of the plugin
+        url: Git repository URL
+        ref: Git ref (tag, branch, SHA) to check
+
+    Returns:
+        Dict with keys:
+            - needs_update: bool
+            - local_commit: str or None
+            - remote_commit: str or None
+            - status: str (one of: 'not_installed', 'update_available', 'up_to_date', 'unknown')
+    """
+    result = {
+        "needs_update": False,
+        "local_commit": None,
+        "remote_commit": None,
+        "status": "unknown"
+    }
+
+    plugin_path = PLUGINS_DIR / plugin_name
+
+    # Check if plugin is installed locally
+    if not plugin_path.exists():
+        result["status"] = "not_installed"
+        result["needs_update"] = True
+        return result
+
+    # Get local commit from lock file
+    lock_data = load_json(PLUGINS_LOCK)
+    for locked in lock_data.get("locked", []):
+        if locked.get("name") == plugin_name:
+            result["local_commit"] = locked.get("commit")
+            break
+
+    if not result["local_commit"]:
+        logger.debug(f"No lock entry found for {plugin_name}, will update")
+        result["status"] = "unknown"
+        result["needs_update"] = True
+        return result
+
+    # Get remote commit without cloning
+    remote_commit = get_remote_commit(url, ref)
+    if not remote_commit:
+        logger.warning(f"Could not check remote version for {plugin_name}")
+        result["status"] = "unknown"
+        return result
+
+    result["remote_commit"] = remote_commit
+
+    # Compare commits
+    if result["local_commit"] == remote_commit:
+        result["status"] = "up_to_date"
+        result["needs_update"] = False
+    else:
+        result["status"] = "update_available"
+        result["needs_update"] = True
+
+    return result
 
 
 def clone_plugin(url: str, ref: Optional[str], tmp_dir: Path) -> Optional[str]:
@@ -257,7 +687,7 @@ def install_plugin_dependencies(plugin_path: Path) -> bool:
     if not dependencies:
         requirements_file = plugin_path / "requirements.txt"
         if requirements_file.exists():
-            logger.debug(f"Using requirements.txt for dependencies")
+            logger.debug("Using requirements.txt for dependencies")
             try:
                 with open(requirements_file) as f:
                     # Read dependencies, skip comments and empty lines
@@ -333,21 +763,35 @@ def get_plugin_id_from_repo(repo_path: Path) -> Optional[str]:
 def get_preserve_patterns(plugin_path: Path) -> List[str]:
     """
     Get list of file patterns to preserve from plugin's plugin.json.
-    Falls back to DEFAULT_PRESERVE_PATTERNS if not specified.
+    Combines DEFAULT_PRESERVE_PATTERNS with plugin-specific patterns.
+
+    Returns:
+        Combined list of default patterns + plugin-specific patterns (duplicates removed)
     """
     metadata = load_plugin_metadata(plugin_path)
 
+    # Start with default patterns
+    patterns = DEFAULT_PRESERVE_PATTERNS.copy()
+
     if not metadata:
         logger.debug("No plugin.json found, using default preserve patterns")
-        return DEFAULT_PRESERVE_PATTERNS
-
-    if "preserve_files" in metadata:
-        patterns = metadata["preserve_files"]
-        logger.debug(f"Using plugin-specified preserve patterns: {patterns}")
         return patterns
 
-    logger.debug("Using default preserve patterns")
-    return DEFAULT_PRESERVE_PATTERNS
+    # Add plugin-specific patterns if defined
+    if "preserve_files" in metadata:
+        plugin_patterns = metadata["preserve_files"]
+        if plugin_patterns:
+            # Combine and remove duplicates while preserving order
+            for pattern in plugin_patterns:
+                if pattern not in patterns:
+                    patterns.append(pattern)
+            logger.debug(f"Combined preserve patterns: {patterns}")
+        else:
+            logger.debug("Using default preserve patterns")
+    else:
+        logger.debug("Using default preserve patterns")
+
+    return patterns
 
 
 def collect_preserved_files(plugin_path: Path, patterns: List[str]) -> Dict[str, bytes]:
@@ -408,7 +852,13 @@ def restore_preserved_files(plugin_path: Path, preserved: Dict[str, bytes]):
             logger.warning(f"Could not restore {rel_path}: {e}")
 
 
-def install_plugin(url: str, ref: Optional[str], name_override: Optional[str] = None, preserve_user_files: bool = True) -> Optional[Dict]:
+def install_plugin(
+    url: str,
+    ref: Optional[str],
+    name_override: Optional[str] = None,
+    preserve_user_files: bool = True,
+    force: bool = False,
+) -> Optional[Dict]:
     """
     Install or update a single plugin.
     Auto-detects plugin name from __plugin_id__ in the repo's __init__.py.
@@ -418,6 +868,7 @@ def install_plugin(url: str, ref: Optional[str], name_override: Optional[str] = 
         ref: Git ref (tag, branch, SHA) to checkout
         name_override: Optional override for plugin name (ignores __plugin_id__)
         preserve_user_files: Whether to preserve user files during updates
+        force: Skip version requirement checks
 
     Returns:
         Lock entry dict on success, None on failure
@@ -445,6 +896,15 @@ def install_plugin(url: str, ref: Optional[str], name_override: Optional[str] = 
                 )
                 return None
             logger.info(f"Detected plugin ID: {plugin_name}")
+
+        # Check version requirements before installing
+        if not force:
+            requirements_met, errors = check_plugin_requirements(tmp_path, plugin_name)
+            if not requirements_met:
+                for error in errors:
+                    logger.error(error)
+                logger.error(f"Plugin '{plugin_name}' requirements not met. Use --force to install anyway.")
+                return None
 
         plugin_dest = PLUGINS_DIR / plugin_name
         preserved_files = {}
@@ -487,8 +947,14 @@ def cmd_add(args):
     """Add or update a plugin in plugins.json and install it."""
     check_git_available()
 
+    # Clean up cache and fix permissions before installing
+    # This prevents issues with root-owned files blocking updates
+    verbose = args.verbose if hasattr(args, 'verbose') else False
+    cleanup_cache_and_permissions(verbose=verbose)
+
     # Install the plugin (auto-detects name from __plugin_id__)
-    lock_entry = install_plugin(args.url, args.ref, args.name)
+    force = args.force if hasattr(args, 'force') else False
+    lock_entry = install_plugin(args.url, args.ref, args.name, force=force)
     if not lock_entry:
         logger.error(f"Failed to install plugin from {args.url}")
         sys.exit(1)
@@ -535,6 +1001,11 @@ def cmd_add(args):
 
 def cmd_rm(args):
     """Remove a plugin from plugins.json and delete its files."""
+    # Clean up cache and fix permissions before removing
+    # This prevents issues with root-owned files blocking removal
+    verbose = args.verbose if hasattr(args, 'verbose') else False
+    cleanup_cache_and_permissions(verbose=verbose)
+
     # Always write to user's plugins.json
     plugins_json_path = PLUGINS_JSON_USER
 
@@ -586,6 +1057,8 @@ def cmd_rm(args):
 
 def cmd_list(args):
     """List all plugins with their status."""
+    check_git_available()
+
     plugins_json_path = get_plugins_json_path()
     plugins_data = load_json(plugins_json_path)
     lock_data = load_json(PLUGINS_LOCK)
@@ -598,63 +1071,203 @@ def cmd_list(args):
         return
 
     # Print table header
-    print(f"{'NAME':<20} {'VERSION':<12} {'STATUS':<12} {'COMMIT':<10}")
-    print("-" * 57)
+    print(f"{'NAME':<20} {'VERSION':<12} {'STATUS':<15} {'COMMIT':<10}")
+    print("-" * 60)
 
     for plugin in plugins:
         name = plugin["name"]
+        url = plugin["url"]
+        ref = plugin.get("ref")
         plugin_path = PLUGINS_DIR / name
-        status = "present" if plugin_path.exists() else "missing"
-        commit = locked.get(name, {}).get("commit", "")[:7] if status == "present" else "-"
 
         # Get version from plugin.json
         version = "-"
-        if status == "present":
+        commit = "-"
+
+        if plugin_path.exists():
             metadata = load_plugin_metadata(plugin_path)
             if metadata and "version" in metadata:
                 version = metadata["version"]
 
-        print(f"{name:<20} {version:<12} {status:<12} {commit:<10}")
+            commit = locked.get(name, {}).get("commit", "")[:7]
+
+            # Check for updates
+            update_info = check_plugin_update_available(name, url, ref)
+
+            if update_info["status"] == "up_to_date":
+                status = "up-to-date"
+            elif update_info["status"] == "update_available":
+                status = "update-avail"
+            elif update_info["status"] == "unknown":
+                status = "present"
+            else:
+                status = "present"
+        else:
+            status = "missing"
+
+        print(f"{name:<20} {version:<12} {status:<15} {commit:<10}")
+
+
+def cmd_cleanup(args):
+    """Clean up cache files and fix permissions."""
+    verbose = args.verbose if hasattr(args, 'verbose') else True  # Default to verbose for standalone command
+
+    logger.info("Cleaning up cache files and fixing permissions...")
+    cleanup_cache_and_permissions(verbose=verbose)
+    logger.info("✓ Cleanup completed successfully")
 
 
 def cmd_sync(args):
     """Sync all plugins from plugins.json."""
     check_git_available()
 
+    # Clean up cache and fix permissions before syncing
+    # This prevents issues with root-owned files blocking updates
+    verbose = args.verbose if hasattr(args, 'verbose') else False
+    cleanup_cache_and_permissions(verbose=verbose)
+
     plugins_json_path = get_plugins_json_path()
     plugins_data = load_json(plugins_json_path)
-    plugins = plugins_data.get("plugins", [])
+    all_plugins = plugins_data.get("plugins", [])
 
-    if not plugins:
+    if not all_plugins:
         logger.warning(f"No plugins configured in {plugins_json_path}")
         return
 
-    logger.info(f"Syncing {len(plugins)} plugin(s)...")
+    # Filter plugins if specific name provided
+    if args.plugin:
+        plugins = [p for p in all_plugins if p.get("name") == args.plugin]
+        if not plugins:
+            logger.error(f"Plugin '{args.plugin}' not found in {plugins_json_path}")
+            logger.info(f"Available plugins: {', '.join([p.get('name', 'unnamed') for p in all_plugins])}")
+            sys.exit(1)
+    else:
+        plugins = all_plugins
+
+    logger.info(f"Checking {len(plugins)} plugin(s) for updates...")
+
+    # Check which plugins need updates
+    plugins_to_update = []
+    plugins_up_to_date = []
+    plugins_not_installed = []
+    plugins_unknown = []
+
+    for plugin in plugins:
+        name = plugin.get("name", "unnamed")
+        url = plugin["url"]
+        ref = plugin.get("ref")
+
+        if args.force:
+            # Force update, skip version check
+            plugins_to_update.append(plugin)
+        else:
+            # Check if update is needed
+            update_info = check_plugin_update_available(name, url, ref)
+
+            if update_info["status"] == "not_installed":
+                plugins_not_installed.append((plugin, update_info))
+                plugins_to_update.append(plugin)
+            elif update_info["status"] == "update_available":
+                plugins_to_update.append(plugin)
+            elif update_info["status"] == "up_to_date":
+                plugins_up_to_date.append((plugin, update_info))
+            else:
+                plugins_unknown.append((plugin, update_info))
+                # For unknown status, update if forced or assume safe to skip
+                if not args.yes:
+                    plugins_to_update.append(plugin)
+
+    # Display status
+    if not args.force and plugins_up_to_date:
+        logger.info(f"✓ {len(plugins_up_to_date)} plugin(s) already up to date")
+        for plugin, info in plugins_up_to_date:
+            local_commit_short = info["local_commit"][:7] if info["local_commit"] else "unknown"
+            logger.info(f"  - {plugin.get('name')} (commit: {local_commit_short})")
+
+    if plugins_not_installed:
+        logger.info(f"ℹ {len(plugins_not_installed)} plugin(s) not installed")
+        for plugin, _ in plugins_not_installed:
+            logger.info(f"  - {plugin.get('name')}")
+
+    if not args.force and plugins_unknown:
+        logger.warning(f"⚠ {len(plugins_unknown)} plugin(s) have unknown status (cannot check remote)")
+        for plugin, _ in plugins_unknown:
+            logger.warning(f"  - {plugin.get('name')}")
+
+    # If no plugins need updating and not forced, exit
+    if not plugins_to_update:
+        logger.info("All plugins are up to date!")
+        return
+
+    # Show what will be updated
+    if not args.force:
+        updates_needed = [p for p in plugins_to_update if p not in [p[0] for p in plugins_not_installed]]
+        if updates_needed:
+            logger.info(f"↻ {len(updates_needed)} plugin(s) have updates available")
+            for plugin in updates_needed:
+                logger.info(f"  - {plugin.get('name')}")
+
+    # Prompt user unless --yes flag is set
+    if not args.yes:
+        if args.force:
+            action = "reinstall"
+            count = len(plugins_to_update)
+        else:
+            action = "install/update"
+            count = len(plugins_to_update)
+
+        response = input(f"\n{action.capitalize()} {count} plugin(s)? [y/N]: ").strip().lower()
+        if response not in ['y', 'yes']:
+            logger.info("Sync cancelled by user")
+            return
+
+    # Install/update plugins
+    logger.info(f"Installing/updating {len(plugins_to_update)} plugin(s)...")
 
     lock_entries = []
     failed = []
+    updated = []
+    installed = []
 
-    for plugin in plugins:
+    # Keep existing lock entries for plugins we're not updating
+    lock_data = load_json(PLUGINS_LOCK)
+    existing_locked = lock_data.get("locked", [])
+    for locked in existing_locked:
+        if locked["name"] not in [p.get("name") for p in plugins_to_update]:
+            lock_entries.append(locked)
+
+    for plugin in plugins_to_update:
         url = plugin["url"]
         ref = plugin.get("ref")
-        name_hint = plugin.get("name")  # Use name from config as hint/override
+        name_hint = plugin.get("name")
 
-        lock_entry = install_plugin(url, ref, name_hint)
+        was_installed = (PLUGINS_DIR / name_hint).exists() if name_hint else False
+
+        lock_entry = install_plugin(url, ref, name_hint, force=args.force)
         if lock_entry:
             lock_entries.append(lock_entry)
+            if was_installed:
+                updated.append(lock_entry["name"])
+            else:
+                installed.append(lock_entry["name"])
         else:
             failed.append(name_hint or url)
 
-    # Update lock file with all successful installs
+    # Update lock file with all lock entries
     lock_data = {"locked": lock_entries}
     save_json_atomic(PLUGINS_LOCK, lock_data)
 
     # Summary
     print()
-    logger.info(f"✓ Sync complete: {len(lock_entries)} installed, {len(failed)} failed")
+    if installed:
+        logger.info(f"✓ {len(installed)} plugin(s) installed: {', '.join(installed)}")
+    if updated:
+        logger.info(f"✓ {len(updated)} plugin(s) updated: {', '.join(updated)}")
     if failed:
-        logger.error(f"Failed plugins: {', '.join(failed)}")
+        logger.error(f"✗ {len(failed)} plugin(s) failed: {', '.join(failed)}")
         sys.exit(1)
+    else:
+        logger.info("Sync completed successfully!")
 
 
 def main():
@@ -668,6 +1281,7 @@ def main():
     add_parser.add_argument("url", help="Git repository URL")
     add_parser.add_argument("--ref", help="Git ref (tag, branch, or SHA)")
     add_parser.add_argument("--name", help="Override plugin name (uses __plugin_id__ from repo by default)")
+    add_parser.add_argument("-f", "--force", action="store_true", help="Skip version requirement checks")
     add_parser.set_defaults(func=cmd_add)
 
     # Remove command (aliases: rm, delete, uninstall)
@@ -682,7 +1296,14 @@ def main():
 
     # Sync command (aliases: update)
     sync_parser = subparsers.add_parser("sync", aliases=["update"], help="Install/update all plugins from plugins.json")
+    sync_parser.add_argument("plugin", nargs="?", help="Specific plugin name to sync (optional)")
+    sync_parser.add_argument("-f", "--force", action="store_true", help="Force reinstall even if up to date and skip version checks")
+    sync_parser.add_argument("-y", "--yes", action="store_true", help="Skip confirmation prompts")
     sync_parser.set_defaults(func=cmd_sync)
+
+    # Cleanup command
+    cleanup_parser = subparsers.add_parser("cleanup", help="Clean up cache files and fix root-owned file permissions")
+    cleanup_parser.set_defaults(func=cmd_cleanup)
 
     args = parser.parse_args()
 

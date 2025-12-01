@@ -1,0 +1,19 @@
+{
+  "plugins": [
+    {
+      "name": "holiday_countdown_board",
+      "url": "https://github.com/kas21/nls-plugin-holiday-countdown-board.git",
+      "ref": "main"
+    },
+    {
+      "name": "nfl_board",
+      "url": "https://github.com/kas21/nls-plugin-nfl-board.git",
+      "ref": "main"
+    },
+    {
+      "name": "dad_jokes",
+      "url": "https://github.com/cipriani14/nls-dad-joke-board",
+      "ref": "default"
+    }
+  ]
+}

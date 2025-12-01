@@ -1,16 +1,18 @@
-from PIL import Image
-from time import sleep
+import glob
 import logging
+import random
+from time import sleep
+
+from PIL import Image
+
 from boards.boards import Boards
 from boards.clock import Clock
 from boards.stanley_cup_champions import StanleyCupChampions
 from data.scoreboard import Scoreboard
-from renderer.scoreboard import ScoreboardRenderer
 from renderer.goal import GoalRenderer
 from renderer.penalty import PenaltyRenderer
+from renderer.scoreboard import ScoreboardRenderer
 from utils import get_file
-import random
-import glob
 
 debug = logging.getLogger("scoreboard")
 
@@ -28,10 +30,21 @@ class MainRenderer:
         self.sog_display_frequency = data.config.sog_display_frequency
         self.alternate_data_counter = 1
 
-        # Pre-initialize boards that require early data fetching
-        # This allows boards to start background data processes
-        # before the render loop begins, ensuring data is available on first render
-        self.boards.initialize_boards_with_data_requirements(data, matrix, sleepEvent)
+    def sync_boards_with_config(self):
+        """
+        Synchronize the board manager with current config state.
+
+        This should be called after config reloads to ensure boards that
+        are no longer in any state list are cleaned up.
+        """
+        config_board_lists = [
+            self.data.config.boards_off_day,
+            self.data.config.boards_scheduled,
+            self.data.config.boards_intermission,
+            self.data.config.boards_post_game,
+        ]
+        self.boards.board_manager.sync_with_config(config_board_lists)
+        debug.info("MainRenderer: Synced boards with config")
 
     def render(self):
 
@@ -58,7 +71,6 @@ class MainRenderer:
             Clock(self.data, self.matrix, self.sleepEvent, duration=60)
             self.data.refresh_data()
 
-        
         while True:
             debug.info('Rendering...')
             #if self.status.is_offseason(self.data.date()):
@@ -93,7 +105,7 @@ class MainRenderer:
                 qPayload = "off_day"
                 qItem = ["{0}/state".format(self.data.config.mqtt_main_topic),qPayload]
                 self.sbQueue.put_nowait(qItem)
-        
+
             if self.data._is_new_day():
                 debug.info('This is a new day')
                 return
@@ -105,7 +117,6 @@ class MainRenderer:
                 i = 0
             else:
                 i += 1
-            
 
     def __render_game_day(self):
         debug.info("Showing Game")
@@ -152,7 +163,7 @@ class MainRenderer:
                 else:
                     self.data.pb_trigger = False
 
-            if self.status.is_live(self.data.overview["gameState"]):
+            if self.scoreboard.is_live:
                 """ Live Game state """
                 #blocks the screensaver from running if game is live
                 self.data.screensaver_livegame = True
@@ -160,7 +171,7 @@ class MainRenderer:
                 period = self.scoreboard.periods.ordinal
                 clock = self.scoreboard.periods.clock
                 score = '{}-{}'.format(self.scoreboard.away_team.goals, self.scoreboard.home_team.goals)
-        
+
                 debug.info("Game is Live")
                 if self.data.config.mqtt_enabled:
                     # Add game state onto queue
@@ -191,7 +202,7 @@ class MainRenderer:
                 else:
                     self.sleepEvent.wait(self.refresh_rate)
 
-            elif self.status.is_game_over(self.data.overview["gameState"]):
+            elif self.scoreboard.is_game_over:
                 debug.info("Game Over")
                 if self.data.config.mqtt_enabled:
                     # Add game state onto queue
@@ -211,10 +222,10 @@ class MainRenderer:
                 if not self.goal_team_cache:
                     self.boards._post_game(self.data, self.matrix,self.sleepEvent)
 
-            elif self.status.is_final(self.data.overview["gameState"]):
+            elif self.scoreboard.is_final:
                 """ Post Game state """
                 debug.info("FINAL")
-                
+
                 sbrenderer = ScoreboardRenderer(self.data, self.matrix, self.scoreboard)
                 self.check_new_goals()
                 """ if self.data.isPlayoff and self.data.stanleycup_round:
@@ -227,7 +238,7 @@ class MainRenderer:
                 if not self.goal_team_cache:
                     self.boards._post_game(self.data, self.matrix,self.sleepEvent)
 
-            elif self.status.is_scheduled(self.data.overview["gameState"]):
+            elif self.scoreboard.is_scheduled:
                 """ Pre-game state """
                 debug.info("Game is Scheduled")
                 #blocks the screensaver from running if game is live or scheduled
@@ -237,10 +248,10 @@ class MainRenderer:
                 #sleep(self.refresh_rate)
                 self.sleepEvent.wait(self.refresh_rate)
                 self.boards._scheduled(self.data, self.matrix,self.sleepEvent)
-                
 
-            elif self.status.is_irregular(self.data.overview["gameState"]):
-                """ Pre-game state """
+
+            elif self.scoreboard.is_irregular:
+                """ Irregular game state (postponed, cancelled, suspended, TBD) """
                 debug.info("Game is irregular")
                 sbrenderer = ScoreboardRenderer(self.data, self.matrix, self.scoreboard)
                 self.__render_irregular(sbrenderer)
@@ -334,13 +345,13 @@ class MainRenderer:
             self.goal_team_cache.append("away")
             if away_id not in self.data.pref_teams and pref_team_only:
                 return
-            
+
             if self.data.config.mqtt_enabled:
                 # Add goal onto queue
                 qPayload = {"away": True, "team": away_name, "preferred_team": pref_team_only,"score": self.away_score}
                 qItem = ["{0}/live/goal".format(self.data.config.mqtt_main_topic),qPayload]
                 self.sbQueue.put_nowait(qItem)
-            
+
             # run the goal animation
             self._draw_event_animation("goal", away_id, away_name)
 

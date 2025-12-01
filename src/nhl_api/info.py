@@ -1,11 +1,27 @@
-import nhl_api.data
-from nhl_api.object import Object, MultiLevelObject
-from nameparser import HumanName
-import logging
-import datetime
-import json
+"""
+DEPRECATION NOTICE:
+    Many classes and functions in this module are candidates for deprecation
+    in favor of the new structured dataclasses in src/nhl_api/models.py.
 
-from nhlpy import NHLClient
+    Still actively used by core application:
+    - team_info() - Used to get all team information
+    - standings() - Wrapper that returns Standings object
+    - playoff_info() - Returns playoff bracket structure
+
+    Deprecation candidates (replace with models.py):
+    - Standings class -> Use Standings dataclass from models.py
+    - Conference class -> Use Conference dataclass from models.py
+    - Division class -> Use Division dataclass from models.py
+    - Playoff class -> Consider creating Playoff dataclass in models.py
+    - player_info() using MultiLevelObject -> Use Player dataclass from models.py
+
+    See TODO.md for migration strategy.
+"""
+import json
+import logging
+
+import nhl_api.data
+from nhl_api.nhl_client import client
 
 debug = logging.getLogger("scoreboard")
 
@@ -25,12 +41,8 @@ def team_info():
         team_dict[team["triCode"]] = team["id"]
 
 
-    client = NHLClient(verbose=False)
     teams_data = {}
-    teams_response = {}
-    #with client as client:
-    #teams_responses = client.standings.get_standings(str(datetime.date.today()))
-    teams_responses = client.standings.get_standings()
+    teams_responses = nhl_api.data.get_standings()
 
     for team in teams_responses["standings"]:
         raw_team_id = team_dict[team["teamAbbrev"]["default"]]
@@ -40,100 +52,9 @@ def team_info():
 
     return teams_data
 
-    # TODO: I think most of this is now held in the TeamStandings object, but leaving here for reference
-    # for team in teams_data:
-    #     try:
-    #         team_id = team['id']
-    #         name = team['fullName']
-    #         # abbreviation = team['abbreviation']
-    #         # team_name = team['teamName']
-    #         # location_name = team['locationName']
-    #         short_name = team['triCode']
-    #         # division_id = team['division']['id']
-    #         # division_name = team['division']['name']
-    #         # division_abbrev = team['division']['abbreviation']
-    #         # conference_id = team['conference']['id']
-    #         # conference_name = team['conference']['name']
-    #         # official_site_url = team['officialSiteUrl']
-    #         # franchise_id = team['franchiseId']
-            
-    #         pg, ng = team_previous_game(short_name, 20232024)
-    #         # print(pg, ng)
-    #         try:
-    #             previous_game = pg
-    #         except:
-    #             debug.debug("No next game detected for {}".format(name))
-    #             previous_game = False
-
-    #         try:
-    #             next_game = ng
-    #         except:
-    #             debug.debug("No next game detected for {}".format(team_name))
-    #             next_game = False
-
-    #         # try:
-    #         #     stats = team['teamStats'][0]['splits'][0]['stat']
-    #         # except:
-    #         #     debug.debug("No Stats detected for {}".format(team_name))
-    #         #     stats = False
-
-    #         # roster = {}
-    #         # for p in team['roster']['roster']:
-    #         #     person = p['person']
-    #         #     person_id = person['id']
-    #         #     name = HumanName(person['fullName'])
-    #         #     first_name = name.first
-    #         #     last_name = name.last
-
-    #         #     position_name = p['position']['name']
-    #         #     position_type = p['position']['abbreviation']
-    #         #     position_abbrev = p['position']['abbreviation']
-
-    #         #     try:
-    #         #         jerseyNumber = p['jerseyNumber']
-    #         #     except KeyError:
-    #         #         jerseyNumber = ""
-                
-    #         #     roster[person_id]= {
-    #         #         'firstName': first_name,
-    #         #         'lastName': last_name,
-    #         #         'jerseyNumber': jerseyNumber,
-    #         #         'positionName': position_name,
-    #         #         'positionType': position_type,
-    #         #         'positionAbbrev': position_abbrev
-    #         #         }
-                
-            
-    #         output = {
-    #             'team_id': team_id,
-    #             'name': name,
-    #             # 'abbreviation': abbreviation,
-    #             'team_name': name,
-    #             # 'location_name': location_name,
-    #             'short_name': short_name,
-    #             # 'division_id': division_id,
-    #             # 'division_name': division_name,
-    #             # 'division_abbrev': division_abbrev,
-    #             # 'conference_id': conference_id,
-    #             # 'conference_name': conference_name,
-    #             # 'official_site_url': official_site_url,
-    #             # 'franchise_id': franchise_id,
-    #             # 'roster': roster,
-    #             'previous_game': previous_game,
-    #             'next_game': next_game,
-    #             # 'stats': stats
-    #         }
-
-    #         # put this dictionary into the larger dictionary
-    #         teams.append(output)
-    #     except:
-    #         print(team)
-    #         debug.error("Missing data in current team info")
-
 def team_next_game_by_code(team_code):
     # Returns the next game and previous game for a team
-    data = nhl_api.data.get_team_schedule(team_code)
-    parsed = data.json()
+    parsed = nhl_api.data.get_team_schedule(team_code)
     pg = None
     ng = None
 
@@ -143,75 +64,51 @@ def team_next_game_by_code(team_code):
             return pg, ng
         else:
             pg = game
-    
+
     return pg, ng
 
-def team_last_game_by_code(team_code):
-    data = nhl_api.data.get_team_schedule(team_code)
-    parsed = data.json()
-    for game in parsed["data"]["games"]:
-        if game["gameState"] == "FINAL":
-            return game
-    return None
-
-# This one is a little funky for the time. I'll loop through the what and why
-# Not too funky anymore, get the teams schedule and grab the lastd and next game
 def team_previous_game(team_code, date, pg = None, ng = None):
     return team_next_game_by_code(team_code)
 
-    # Previous Logic - keeping just in case
-
-    # # This response returns the next three games, starting from the date given
-    # client = NHLClient(verbose=False)
-    # teams_response = {}
-    # #with client as client:
-    # teams_response = client.schedule.get_schedule_by_team_by_week(team_code, date)
-    
-    # if teams_response:
-    #     pg = teams_response[0]
-    # else:
-    #     if ng is None or pg is None:
-    #         pg, ng = team_previous_game(team_code, teams_response[0]["gametDate"], None, None) 
-    # # If the first game in the list is a future game, the that's the next game. I think this will always be the case...
-    # # TODO: Get a better situation for a LIVE game when showing a team summary during intermission
-
-    # if pg["gameState"] == "FUT" or pg["gameState"] == "PRE" or pg["gameState"] == "LIVE":
-    #     ng = pg
-    #     # Then we take the previous_start_date given from the response and run through it again
-    #     previousStartDate = datetime.date.today() - datetime.timedelta(days=7)
-    #     pg, ng = team_previous_game(team_code, previousStartDate, None, ng)
-    # else:
-    #     # I _think_ that realistically the previous_game will always be the last game in this list, but
-    #     # I'm going to simply loop through for now.
-    #     for game in teams_response[1:]:
-    #         if (game["gameState"] == "FINAL" or game["gameState"] == "OFF") and game["gameDate"] > pg["gameDate"]:
-    #             pg = game
-    #         else:
-    #             if ng is None or ng["gameDate"] < game["gameDate"]:
-    #                 ng = game
-
-    # # Then return. I'd like to say we could be smart and take a few days off from the initial request,
-    # # but I'm already questioning how that'd act with the likes of the all-star break.
-    # # I think two requests is fine for now
-    # return pg, ng
 
 def player_info(playerId):
-    data = nhl_api.data.get_player(playerId)
-    parsed = data.json()
-    player = parsed["people"][0]
+    """
+    Get player information (legacy wrapper).
 
-    return MultiLevelObject(player)
+    Note: This function is kept for backward compatibility through __init__.py.
+    Consider using nhl_api.client.get_player() with Player dataclass instead.
+    """
+    parsed = nhl_api.data.get_player(playerId)
+    # Return raw dict instead of MultiLevelObject since that's deleted
+    return parsed
+
 
 def status():
-    data = nhl_api.data.get_game_status().json()
+    """
+    Get game status information (legacy wrapper).
+
+    Note: Used by __init__.py wrapper for game_status_info().
+    """
+    data = nhl_api.data.get_game_status()
     return data
 
 
 def current_season():
-    data = nhl_api.data.get_current_season().json()
+    """
+    Get current season information (legacy wrapper).
+
+    Note: Used by Status class through __init__.py wrapper.
+    """
+    data = nhl_api.data.get_current_season()
     return data
 
+
 def next_season():
+    """
+    Get next season schedule information (legacy wrapper).
+
+    Note: Used by Status class through __init__.py wrapper.
+    """
     data = nhl_api.data.get_next_season()
     return data
 
@@ -219,9 +116,7 @@ def next_season():
 def playoff_info(season):
     try:
         output = {'season': season}
-        client = NHLClient(verbose = False)
-        data = client.playoffs.carousel(season)
-        parsed = data
+        parsed = client.get_playoff_carousel(season)
         season = parsed["seasonId"]
 
         playoff_rounds = parsed["rounds"]
@@ -240,15 +135,19 @@ def playoff_info(season):
         output['currentRound'] = currentRound
     except KeyError:
         debug.error("No default round for {} Playoff.".format(season))
-        default_round = 1
         output['currentRound'] = currentRound
 
     return output
 
 def series_record(seriesCode, season):
-    data = data = nhl_api.data.get_series_record(seriesCode, season)
-    parsed = data.json()
-    return parsed["data"]
+    data = nhl_api.data.get_series_record(seriesCode, season)
+    return data["data"]
+
+
+def standings():
+    """Get current NHL standings as a Standings object."""
+    season_standings = nhl_api.data.get_standings()
+    return Standings(season_standings, {})
 
 
 
@@ -282,7 +181,7 @@ class Standings:
         """
         eastern_all = []
         western_all = []
-        
+
         # First separate into conferences
         for item in self.data["standings"]:
             if item["conferenceName"] == 'Eastern':
@@ -293,26 +192,26 @@ class Standings:
         # Process each conference
         eastern_wc = self._process_conference_wildcard(eastern_all)
         western_wc = self._process_conference_wildcard(western_all)
-        
+
         self.by_wildcard = nhl_api.info.Conference(eastern_wc, western_wc)
 
     def _process_conference_wildcard(self, conference_data):
         # Sort by division sequence to get division leaders
         division_leaders = []
         wild_card_teams = []
-        
+
         for team in conference_data:
             if team["divisionSequence"] <= 3:
                 division_leaders.append(team)
             else:
                 wild_card_teams.append(team)
-                
+
         # Sort division leaders by divisionSequence
         division_leaders.sort(key=lambda x: (x["divisionName"], x["divisionSequence"]))
-        
+
         # Sort wildcard teams by wildcardSequence
         wild_card_teams.sort(key=lambda x: x["wildcardSequence"])
-        
+
         # Create division structure
         metropolitan = []
         atlantic = []
@@ -327,7 +226,7 @@ class Standings:
                 central.append(team)
             elif team["divisionName"] == "Pacific":
                 pacific.append(team)
-                
+
         division = nhl_api.info.Division(metropolitan, atlantic, central, pacific)
         return nhl_api.info.Wildcard(wild_card_teams, division)
 
@@ -423,6 +322,3 @@ class TeamDetails:
         self.abbrev = abbrev
         self.previous_game = previous_game
         self.next_game = next_game
-
-class Info(nhl_api.object.Object):
-    pass

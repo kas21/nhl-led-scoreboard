@@ -176,6 +176,10 @@ if git pull --rebase --stat origin main; then
        if ! git diff -s --exit-code HEAD "$last_commit" requirements.txt; then
           printf "${GREEN}%s${RESET}\n" "New python library requirements for this version, installing now"
           if [ -n "$VIRTUAL_ENV" ]; then
+                # Update pip in the virtual environment
+                printf "${GREEN}%s${RESET}\n" "Upgrading pip in the virtual environment..."
+                $VIRTUAL_ENV/bin/pip3 install --upgrade pip
+                # Install the new requirements
                 $VIRTUAL_ENV/bin/pip3 install -r requirements.txt
           else
              printf "${YELLOW}%s${RESET}\n" "Python virtual environment not active. Skipping dependency installation."

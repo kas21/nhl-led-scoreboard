@@ -16,7 +16,15 @@ fi
 
 # Activate virtual environment if it exists
 if [ -f "$HOME/nhlsb-venv/bin/activate" ]; then
+  printf "${YELLOW}%s${RESET}\n" "Activating Python virtual environment..."
   . "$HOME/nhlsb-venv/bin/activate"
+  if [ -n "$VIRTUAL_ENV" ]; then
+    printf "${GREEN}Virtual environment activated:${RESET} %s\n" "$VIRTUAL_ENV"
+  else
+    printf "${RED}Virtual environment activation failed.${RESET}\n"
+  fi
+else
+    printf "${YELLOW}%s${RESET}\n" "Virtual environment not found at $HOME/nhlsb-venv."
 fi
 
 # Don't run as root
@@ -168,7 +176,7 @@ if git pull --rebase --stat origin main; then
        if ! git diff -s --exit-code HEAD "$last_commit" requirements.txt; then
           printf "${GREEN}%s${RESET}\n" "New python library requirements for this version, installing now"
           if [ -n "$VIRTUAL_ENV" ]; then
-                $VIRTUAL_ENV/bin/pip3 install -U -r requirements.txt
+                $VIRTUAL_ENV/bin/pip3 install -r requirements.txt
           else
              printf "${YELLOW}%s${RESET}\n" "Python virtual environment not active. Skipping dependency installation."
           fi

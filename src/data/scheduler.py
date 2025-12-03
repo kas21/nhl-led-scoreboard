@@ -270,7 +270,12 @@ class SchedulerManager:
         # but for nwo we will just pull the data and cache it.  It's minimal.
         job_id = self.KNOWN_JOB_IDS["statsLeadersWorker"]
         if not self._job_exists(job_id, existing_ids):
-            StatsLeadersWorker(self.data, self.data.scheduler)
+            StatsLeadersWorker(
+                self.data,
+                self.data.scheduler,
+                categories=self.data.config.stats_leaders_categories,
+                limit=self.data.config.stats_leaders_limit
+            )
             existing_ids.append(job_id)
             sb_logger.info(f"Scheduled stats leaders worker (id={job_id})")
         else:

@@ -17,9 +17,29 @@ class StatsLeadersWorker:
     JOB_ID = "statsLeadersWorker"
     CACHE_KEY = "nhl_stats_leaders"
 
+    # Valid categories supported by the NHL API
+    VALID_CATEGORIES = {
+        'goals', 'points', 'assists', 'toi', 'plusMinus',
+        'penaltyMins', 'faceoffLeaders', 'goalsPp', 'goalsSh'
+    }
+
     def __init__(self, data, scheduler, categories: List[str] = None, limit: int = 15, refresh_minutes: int = 30):
         self.data = data
-        self.categories = categories or ['goals', 'assists', 'points']
+        requested_categories = categories or ['goals', 'assists', 'points']
+
+        # Validate and filter categories
+        valid_categories = [cat for cat in requested_categories if cat in self.VALID_CATEGORIES]
+        invalid_categories = [cat for cat in requested_categories if cat not in self.VALID_CATEGORIES]
+
+        if invalid_categories:
+            debug.warning(
+                f"StatsLeadersWorker: Ignoring invalid categories: {invalid_categories}. "
+                f"Valid options: {sorted(self.VALID_CATEGORIES)}"
+            )
+
+        # Fetch these by default if nothing else is valid. Not sure this is needed though.
+        # But to avoid having a worker that does nothing, well just fetch some data.
+        self.categories = valid_categories if valid_categories else ['goals', 'assists', 'points']
         self.limit = limit
         self.refresh_minutes = refresh_minutes
 

@@ -7,12 +7,12 @@ SBHOME=$HOME/nhl-led-scoreboard
 ARCH=$(uname -m)
 DEBIAN_VERSION=$(cat /etc/debian_version)
 
-# Comment out next line if not running from image
-#cd $SBHOME
-
-#Uncomment for running out of the repository scripts/sbtools directory
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-cd "${DIR}"
+if [ -d "/home/pi/.nhlledportal" ]; then
+  cd "$SBHOME"
+else
+  DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+  cd "${DIR}"
+fi
 
 # Activate virtual environment if it exists
 if [ -f "$HOME/nhlsb-venv/bin/activate" ]; then

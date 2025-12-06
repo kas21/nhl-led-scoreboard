@@ -22,7 +22,7 @@ RUN python -m pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requ
 
 FROM python:3.13-slim-bookworm
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y \
      libcairo2 \
      && rm -rf /var/lib/apt/lists/* \
      && apt-get clean
@@ -33,11 +33,19 @@ COPY --from=builder /app/wheels /wheels
 COPY --from=builder /app/requirements.txt .
 
 RUN python -m pip install --no-cache /wheels/*
-# Creates a non-root user with an explicit UID and adds permission to access the /app folder
-# For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
+
+# Add the entrypoint script and make it executable
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Creates a non-root user
 RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser
 
+# Ensure local user bin is in PATH so the app can find the new plugin modules
+ENV PATH="/home/appuser/.local/bin:${PATH}"
+
 EXPOSE 8888
-# During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
-ENTRYPOINT ["python", "src/main.py", "--emulated"]
+
+# Set the new entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]

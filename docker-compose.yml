@@ -13,3 +13,9 @@ services:
       - 8888:8888
     volumes:
       - './config/config.json:/app/config/config.json'
+      - './src/boards/plugins:/app/src/boards/plugins'
+      # Persist the installed packages
+      - plugin_libs:/home/appuser/.local
+
+volumes:
+  plugin_libs:

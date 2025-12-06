@@ -45,7 +45,6 @@ class Series:
         except Exception:
             debug.error(f"Failed to get series info for {series['seriesLetter']}")
             return
-        debug.info(series_info)
 
         top = series_info["topSeed"]
         bottom = series_info["bottomSeed"]

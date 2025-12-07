@@ -28,7 +28,6 @@ class ecWxAlerts(object):
 
     def getAlerts(self):
 
-
         debug.info("Checking for EC weather alerts")
         #ecData = ECData(coordinates=(self.data.latlng))
         asyncio.run(self.data.ecData.update())
@@ -36,18 +35,73 @@ class ecWxAlerts(object):
         self.network_issues = False
 
         debug.info("Last Alert: {0}".format(self.data.wx_alerts))
-        # Check if there's more than a length of 5 returned back as if there's
-        # No alerts, the dictionary still comes back with empty values for
-        # warning, watch, advisory, statements and endings
-        # Currently don't do anything with a statement
-        # debug.info(curr_alerts)
+        debug.debug(curr_alerts)
 
-        #Find the latest date in the curr_alerts
+        # --- NEW: Pre-process alerts to handle Color format ---
+        # EC now puts coloured alerts into 'warnings'. We must sort them.
+        # We also standardize the titles here to avoid slicing issues later.
 
+        # 1. Grab all potential alerts from the raw 'warnings' list
+        raw_list = curr_alerts.get("warnings", {}).get("value", [])
 
-        len_warn = len(curr_alerts.get("warnings").get("value","0"))
-        len_watch = len(curr_alerts.get("watches").get("value","0"))
-        len_advisory = len(curr_alerts.get("advisories").get("value","0"))
+        # 2. Reset the lists in the dictionary so we can repopulate them correctly
+        curr_alerts["warnings"]["value"] = []
+        curr_alerts["watches"]["value"] = []
+        curr_alerts["advisories"]["value"] = []
+
+        for item in raw_list:
+            title = item.get("title", "")
+            lower_title = title.lower()
+
+            # Logic to clean the title and assign category
+            clean_title = title # Default
+            category = "warning" # Default fallback
+
+            if " - " in title and ("red" in lower_title or "orange" in lower_title or "yellow" in lower_title):
+                # Handle New Format: "Yellow Warning - Extreme Cold"
+                parts = title.split(" - ", 1)
+                color_part = parts[0].lower()
+                clean_title = parts[1] # Becomes just "Extreme Cold"
+
+                if "red" in color_part:
+                    category = "warning"
+                elif "orange" in color_part:
+                    category = "watch"
+                elif "yellow" in color_part:
+                    category = "advisory"
+            else:
+                # Handle Legacy Format: "Severe Thunderstorm Watch"
+                # We strip the suffix here so we don't have to do it in the display logic
+                if lower_title.endswith(" warning"):
+                    clean_title = title[:-8] # Strip " Warning"
+                    category = "warning"
+                elif lower_title.endswith(" watch"):
+                    clean_title = title[:-6] # Strip " Watch"
+                    category = "watch"
+                elif lower_title.endswith(" advisory"):
+                    clean_title = title[:-9] # Strip " Advisory"
+                    category = "advisory"
+                else:
+                    # Fallback for unknown formats
+                    category = "warning"
+
+            # Update the item title to the clean version
+            item["title"] = clean_title
+
+            # Append to the correct list in curr_alerts
+            if category == "warning":
+                curr_alerts["warnings"]["value"].append(item)
+            elif category == "watch":
+                curr_alerts["watches"]["value"].append(item)
+            elif category == "advisory":
+                curr_alerts["advisories"]["value"].append(item)
+
+        debug.debug(curr_alerts)
+        # --- End of Pre-processing ---
+
+        len_warn = len(curr_alerts.get("warnings").get("value", []))
+        len_watch = len(curr_alerts.get("watches").get("value", []))
+        len_advisory = len(curr_alerts.get("advisories").get("value", []))
         debug.info(f"Warnings: {len_warn} Watches: {len_watch} Advisories: {len_advisory}")
 
         num_alerts = len_warn + len_watch + len_advisory
@@ -55,12 +109,11 @@ class ecWxAlerts(object):
         if num_alerts > 0:
             # Only get the latest alert
             i = 0
-            # Create the warnings, watches and advisory lists from curr_alerts but only take the most recent one
 
-            wx_num_endings = len(curr_alerts.get("endings").get("value","0"))
-            wx_num_warning = len(curr_alerts.get("warnings").get("value","0"))
-            wx_num_watch = len(curr_alerts.get("watches").get("value","0"))
-            wx_num_advisory = len(curr_alerts.get("advisories").get("value","0"))
+            wx_num_endings = len(curr_alerts.get("endings").get("value", []))
+            wx_num_warning = len(curr_alerts.get("warnings").get("value", []))
+            wx_num_watch = len(curr_alerts.get("watches").get("value", []))
+            wx_num_advisory = len(curr_alerts.get("advisories").get("value", []))
 
             #wx_total_alerts = wx_num_endings + wx_num_warning + wx_num_watch + wx_num_advisory
             warn_datetime = 0
@@ -79,12 +132,11 @@ class ecWxAlerts(object):
                     wx_alert_time = warn_datetime.strftime("%m/%d %H:%M")
                 else:
                     wx_alert_time = warn_datetime.strftime("%m/%d %I:%M %p")
-                #Strip out the Warning at end of string for the title
-                wx_alert_title = curr_alerts["warnings"]["value"][i]["title"][:-(len(" Warning"))]
+
+                # Title is already cleaned in pre-processing
+                wx_alert_title = curr_alerts["warnings"]["value"][i]["title"]
                 warning = [wx_alert_title,"warning",wx_alert_time]
                 alerts.append(warning)
-
-
 
             if wx_num_watch > 0:
                 watch_date = curr_alerts["watches"]["value"][i]["date"][:-4]
@@ -94,11 +146,11 @@ class ecWxAlerts(object):
                     wx_alert_time = watch_datetime.strftime("%m/%d %H:%M")
                 else:
                     wx_alert_time = watch_datetime.strftime("%m/%d %I:%M %p")
-                wx_alert_title = curr_alerts["watches"]["value"][i]["title"][:-(len(" Watch"))]
+
+                # Title is already cleaned in pre-processing
+                wx_alert_title = curr_alerts["watches"]["value"][i]["title"]
                 watch = [wx_alert_title,"watch",wx_alert_time]
                 alerts.append(watch)
-
-
 
             if wx_num_advisory > 0:
                 advisory_date = curr_alerts["advisories"]["value"][i]["date"][:-4]
@@ -110,7 +162,8 @@ class ecWxAlerts(object):
                 else:
                     wx_alert_time = advisory_datetime.strftime("%m/%d %I:%M %p")
 
-                wx_alert_title = curr_alerts["advisories"]["value"][i]["title"][:-(len(" Advisory"))]
+                # Title is already cleaned in pre-processing
+                wx_alert_title = curr_alerts["advisories"]["value"][i]["title"]
                 advisory = [wx_alert_title,"advisory",wx_alert_time]
                 alerts.append(advisory)
 

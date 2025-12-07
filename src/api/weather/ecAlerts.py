@@ -27,9 +27,7 @@ class ecWxAlerts(object):
         self.getAlerts()
 
     def getAlerts(self):
-
         debug.info("Checking for EC weather alerts")
-        #ecData = ECData(coordinates=(self.data.latlng))
         asyncio.run(self.data.ecData.update())
         curr_alerts = self.data.ecData.alerts
         self.network_issues = False
@@ -37,175 +35,135 @@ class ecWxAlerts(object):
         debug.info("Last Alert: {0}".format(self.data.wx_alerts))
         debug.debug(curr_alerts)
 
-        # --- NEW: Pre-process alerts to handle Color format ---
-        # EC now puts coloured alerts into 'warnings'. We must sort them.
-        # We also standardize the titles here to avoid slicing issues later.
+        # --- Define RGB Colors ---
+        # Format: (Red, Green, Blue)
+        rgb_red = (255, 0, 0)
+        rgb_orange = (255, 128, 0)
+        rgb_yellow = (255, 255, 0)
+        rgb_gray = (128, 128, 128)
 
-        # 1. Grab all potential alerts from the raw 'warnings' list
-        raw_list = curr_alerts.get("warnings", {}).get("value", [])
+        # Collect potential alerts
+        found_alerts = []
+        source_keys = ['warnings', 'watches', 'advisories']
 
-        # 2. Reset the lists in the dictionary so we can repopulate them correctly
-        curr_alerts["warnings"]["value"] = []
-        curr_alerts["watches"]["value"] = []
-        curr_alerts["advisories"]["value"] = []
+        for key in source_keys:
+            items = curr_alerts.get(key, {}).get("value", [])
 
-        for item in raw_list:
-            title = item.get("title", "")
-            lower_title = title.lower()
+            if len(items) > 0:
+                item = items[0]
+                raw_title = item.get("title", "")
+                raw_date = item.get("date", "")[:-4]
 
-            # Logic to clean the title and assign category
-            clean_title = title # Default
-            category = "warning" # Default fallback
-
-            if " - " in title and ("red" in lower_title or "orange" in lower_title or "yellow" in lower_title):
-                # Handle New Format: "Yellow Warning - Extreme Cold"
-                parts = title.split(" - ", 1)
-                color_part = parts[0].lower()
-                clean_title = parts[1] # Becomes just "Extreme Cold"
-
-                if "red" in color_part:
+                # --- 1. DEFAULT VALUES (Legacy Fallback) ---
+                # Default mapping if no color is found in the string
+                if key == 'warnings':
                     category = "warning"
-                elif "orange" in color_part:
+                    color = rgb_red
+                elif key == 'watches':
                     category = "watch"
-                elif "yellow" in color_part:
+                    color = rgb_orange
+                elif key == 'advisories':
                     category = "advisory"
-            else:
-                # Handle Legacy Format: "Severe Thunderstorm Watch"
-                # We strip the suffix here so we don't have to do it in the display logic
-                if lower_title.endswith(" warning"):
-                    clean_title = title[:-8] # Strip " Warning"
-                    category = "warning"
-                elif lower_title.endswith(" watch"):
-                    clean_title = title[:-6] # Strip " Watch"
-                    category = "watch"
-                elif lower_title.endswith(" advisory"):
-                    clean_title = title[:-9] # Strip " Advisory"
-                    category = "advisory"
+                    color = rgb_yellow
+
+                clean_title = raw_title
+
+                # --- 2. PARSING LOGIC ---
+                lower_title = raw_title.lower()
+
+                # CHECK FOR NEW FORMAT: "Color Category - Description"
+                if " - " in raw_title and any(c in lower_title for c in ['red', 'orange', 'yellow']):
+                    parts = raw_title.split(" - ", 1)
+                    header_part = parts[0].lower()
+                    description_part = parts[1]
+
+                    # Extract Color and assign RGB Tuple
+                    if "red" in header_part:
+                        color = rgb_red
+                    elif "orange" in header_part:
+                        color = rgb_orange
+                    elif "yellow" in header_part:
+                        color = rgb_yellow
+
+                    # Extract Category
+                    if "warning" in header_part:
+                        category = "warning"
+                    elif "watch" in header_part:
+                        category = "watch"
+                    elif "advisory" in header_part:
+                        category = "advisory"
+
+                    clean_title = description_part
+
+                # CHECK FOR LEGACY SUFFIXES
                 else:
-                    # Fallback for unknown formats
-                    category = "warning"
+                    if lower_title.endswith(" warning"):
+                        clean_title = raw_title[:-(len(" Warning"))]
+                        category = "warning"
+                        color = rgb_red
+                    elif lower_title.endswith(" watch"):
+                        clean_title = raw_title[:-(len(" Watch"))]
+                        category = "watch"
+                        color = rgb_orange
+                    elif lower_title.endswith(" advisory"):
+                        clean_title = raw_title[:-(len(" Advisory"))]
+                        category = "advisory"
+                        color = rgb_yellow
 
-            # Update the item title to the clean version
-            item["title"] = clean_title
+                # --- 3. TIME FORMATTING ---
+                try:
+                    alert_datetime = datetime.datetime.strptime(raw_date, self.alert_date_format)
+                    if self.time_format == "%H:%M":
+                        formatted_time = alert_datetime.strftime("%m/%d %H:%M")
+                    else:
+                        formatted_time = alert_datetime.strftime("%m/%d %I:%M %p")
+                except ValueError:
+                    formatted_time = raw_date
 
-            # Append to the correct list in curr_alerts
-            if category == "warning":
-                curr_alerts["warnings"]["value"].append(item)
-            elif category == "watch":
-                curr_alerts["watches"]["value"].append(item)
-            elif category == "advisory":
-                curr_alerts["advisories"]["value"].append(item)
+                # --- 4. ADD TO LIST ---
+                # Structure: [Title, Category, Time, RGB Tuple]
+                found_alerts.append([clean_title, category, formatted_time, color])
 
-        debug.debug(curr_alerts)
-        # --- End of Pre-processing ---
-
-        len_warn = len(curr_alerts.get("warnings").get("value", []))
-        len_watch = len(curr_alerts.get("watches").get("value", []))
-        len_advisory = len(curr_alerts.get("advisories").get("value", []))
-        debug.info(f"Warnings: {len_warn} Watches: {len_watch} Advisories: {len_advisory}")
-
-        num_alerts = len_warn + len_watch + len_advisory
+        # --- PROCESS RESULTS ---
+        num_alerts = len(found_alerts)
 
         if num_alerts > 0:
-            # Only get the latest alert
-            i = 0
+            found_alerts.sort(key=lambda x: x[2], reverse=True)
+            current_alert = found_alerts[0]
 
-            wx_num_endings = len(curr_alerts.get("endings").get("value", []))
-            wx_num_warning = len(curr_alerts.get("warnings").get("value", []))
-            wx_num_watch = len(curr_alerts.get("watches").get("value", []))
-            wx_num_advisory = len(curr_alerts.get("advisories").get("value", []))
+            # Shorten common long titles
+            if current_alert[0] == "Severe Thunderstorm":
+                current_alert[0] = "Svr T-Storm"
+            if current_alert[0] == "Freezing Rain":
+                current_alert[0] = "Frzn Rain"
+            if current_alert[0] == "Freezing Drizzle":
+                current_alert[0] = "Frzn Drzl"
 
-            #wx_total_alerts = wx_num_endings + wx_num_warning + wx_num_watch + wx_num_advisory
-            warn_datetime = 0
-            watch_datetime = 0
-            advisory_datetime = 0
-            warning = []
-            watch = []
-            advisory = []
-            alerts = []
-
-            if wx_num_warning > 0:
-                warn_date = curr_alerts["warnings"]["value"][i]["date"][:-4]
-                #Convert to date for display
-                warn_datetime = datetime.datetime.strptime(warn_date,self.alert_date_format)
-                if self.time_format == "%H:%M":
-                    wx_alert_time = warn_datetime.strftime("%m/%d %H:%M")
-                else:
-                    wx_alert_time = warn_datetime.strftime("%m/%d %I:%M %p")
-
-                # Title is already cleaned in pre-processing
-                wx_alert_title = curr_alerts["warnings"]["value"][i]["title"]
-                warning = [wx_alert_title,"warning",wx_alert_time]
-                alerts.append(warning)
-
-            if wx_num_watch > 0:
-                watch_date = curr_alerts["watches"]["value"][i]["date"][:-4]
-                #Convert to date for display
-                watch_datetime = datetime.datetime.strptime(watch_date,self.alert_date_format)
-                if self.time_format == "%H:%M":
-                    wx_alert_time = watch_datetime.strftime("%m/%d %H:%M")
-                else:
-                    wx_alert_time = watch_datetime.strftime("%m/%d %I:%M %p")
-
-                # Title is already cleaned in pre-processing
-                wx_alert_title = curr_alerts["watches"]["value"][i]["title"]
-                watch = [wx_alert_title,"watch",wx_alert_time]
-                alerts.append(watch)
-
-            if wx_num_advisory > 0:
-                advisory_date = curr_alerts["advisories"]["value"][i]["date"][:-4]
-                #Convert to date for display
-                advisory_datetime = datetime.datetime.strptime(advisory_date,self.alert_date_format)
-
-                if self.time_format == "%H:%M":
-                    wx_alert_time = advisory_datetime.strftime("%m/%d %H:%M")
-                else:
-                    wx_alert_time = advisory_datetime.strftime("%m/%d %I:%M %p")
-
-                # Title is already cleaned in pre-processing
-                wx_alert_title = curr_alerts["advisories"]["value"][i]["title"]
-                advisory = [wx_alert_title,"advisory",wx_alert_time]
-                alerts.append(advisory)
-
-
-            #Find the latest alert time to set what the alert should be shown
-            #debug.info(alerts)
-            alerts.sort(key = lambda x: x[2],reverse=True)
-
-
-            if alerts[0][0] == "Severe Thunderstorm":
-                alerts[0][0] = "Svr T-Storm"
-            if alerts[0][0] == "Freezing Rain":
-                alerts[0][0] = "Frzn Rain"
-            if alerts[0][0] == "Freezing Drizzle":
-                alerts[0][0] = "Frzn Drzl"
-
-            #debug.info(alerts)
-
-            if self.data.wx_alerts != alerts[0]:
-                self.data.wx_alerts = alerts[0]
+            if self.data.wx_alerts != current_alert:
+                self.data.wx_alerts = current_alert
                 self.weather_alert = 0
+                debug.info("Current Alert: {0}".format(self.data.wx_alerts))
 
+            wx_num_endings = len(curr_alerts.get("endings", {}).get("value", []))
             if wx_num_endings > 0:
-                ending_date = curr_alerts["endings"]["value"][i]["date"][:-4]
-                #Convert to date for display
-                ending_datetime = datetime.datetime.strptime(ending_date,self.alert_date_format)
-                if self.time_format == "%H:%M":
-                    wx_alert_time = ending_datetime.strftime("%m/%d %H:%M")
-                else:
-                    wx_alert_time = ending_datetime.strftime("%m/%d %I:%M %p")
+                ending_item = curr_alerts["endings"]["value"][0]
+                ending_date = ending_item["date"][:-4]
+                try:
+                    end_dt = datetime.datetime.strptime(ending_date, self.alert_date_format)
+                    if self.time_format == "%H:%M":
+                        end_time = end_dt.strftime("%m/%d %H:%M")
+                    else:
+                        end_time = end_dt.strftime("%m/%d %I:%M %p")
+                except:
+                    end_time = ending_date
 
-                endings = [curr_alerts["endings"]["value"][i]["title"],"ended",wx_alert_time]
+                # Endings: use Gray RGB
+                endings = [ending_item["title"], "ended", end_time, rgb_gray]
+
                 self.data.wx_alert_interrupt = False
                 self.weather_alert = 0
                 self.data.wx_alerts = []
                 debug.info(endings)
-            # else:
-            #     self.data.wx_alert_interrupt = False
-            #     self.weather_alert = 0
-
-            if len(self.data.wx_alerts) > 0:
-                debug.info("Current Alert: {0}".format(self.data.wx_alerts))
 
             if wx_num_endings == 0:
                 if self.weather_alert == 0:
@@ -213,11 +171,8 @@ class ecWxAlerts(object):
                     self.sleepEvent.set()
                 self.weather_alert += 1
 
-
         else:
             debug.info("No active EC weather alerts in your area")
             self.data.wx_alert_interrupt = False
             self.data.wx_alerts.clear()
             self.weather_alert = 0
-            # Run every 'x' minutes
-            #sleep(60 * self.alert_frequency)

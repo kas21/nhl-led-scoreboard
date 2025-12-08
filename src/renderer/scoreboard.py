@@ -148,8 +148,8 @@ class ScoreboardRenderer:
         )
 
         end_text = "FINAL"
-        if self.scoreboard.periods.number >= 3:
-            end_text = "F/{}".format(period)
+        if period in ("OT", "SO"):
+            end_text = f"F/{period}"
 
         self.matrix.draw_text_layout(
             self.layout.period_final,

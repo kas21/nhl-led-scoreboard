@@ -159,7 +159,7 @@ class Data:
 
         # For update checker, True means new update available from github
         self.newUpdate = False
-        self.UpdateRepo = "riffnshred/nhl-led-scoreboard"
+        self.UpdateRepo = "falkyre/nhl-led-scoreboard"
 
         #For screensaver
         self.screensaver = False
@@ -213,7 +213,7 @@ class Data:
         self.refresh_standings()
 
         # Playoff Flag
-        self.isPlayoff = True
+        self.isPlayoff = False
 
         # Stanley cup round flag
         self.stanleycup_round = False

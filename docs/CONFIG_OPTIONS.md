@@ -123,7 +123,7 @@ Define which boards display during each game state. Each is an array of board na
 | `alert_feed` | string | `""` | Alert source: `"EC"` or `"NWS"` |
 | `update_freq` | integer | `5` | Alert refresh frequency (minutes) |
 | `show_alerts` | boolean | `false` | Display weather alerts |
-| `nws_show_expire` | boolean | `false` | Show expiry time instead of effective time |
+| `nws_show_expire` | boolean | `false` | Show end time (was expiry time but end is used for alerts) instead of effective time  |
 | `alert_title` | boolean | `false` | Display alert type (WARNING/WATCH/ADVISORY) |
 | `scroll_alert` | boolean | `false` | Scroll alert text |
 | `alert_duration` | integer | `5` | Alert display duration (seconds) |

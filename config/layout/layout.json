@@ -8,7 +8,8 @@
       "position": ["0%", 0]
     },
     "logo": {
-      "position": ["65%", 0]
+      "position": [["100%", 1], 0],
+      "align": "right"
     }
   },
   "scoreboard": {
@@ -69,6 +70,34 @@
       "position": ["50%", 6],
       "align": "center-top"
     },
+    "pp_badge_home_time": {
+      "position": ["100%", "100%"],
+      "align": "right-bottom",
+      "font": "small"
+    },
+    "pp_badge_home": {
+      "position": [-2, 0],
+      "relative": {
+        "to": "pp_badge_home_time",
+        "align": "left"
+      },
+      "font": "small",
+      "align": "right"
+    },
+    "pp_badge_away_time": {
+      "position": ["0%", "100%"],
+      "align": "left-bottom",
+      "font": "small"
+    },
+    "pp_badge_away": {
+      "position":[2, 0],
+      "relative": {
+        "to": "pp_badge_away_time",
+        "align": "right"
+      },
+      "font": "small",
+      "align": "left"
+    },
     "irregular_status": {
       "position": ["50%", 6],
       "align": "center-top"
@@ -76,17 +105,87 @@
 
   },
   "goal":{
-    "scorer_info":{
-      "hashtag_dots":{
-        "position": [0, 8],
-        "font": "medium_2",
+    "header": {
+      "position": [1,1],
+      "align":"left"
+    },
+    "hashtag_dots": {
+      "position":[1,2],
+      "relative": {
+        "to": "header",
+        "align":"left-bottom"
+      }
+    },
+    "scorer_number": {
+      "position": [12,2],
+      "relative": {
+        "to": "header",
+        "align":"left-bottom"
+      },
+      "font":"medium_2"
+    },
+    "badge": {
+      "position": [-12,11],
+      "relative":{
+        "to": "scorer_number",
         "align": "left"
+      }
+    },
+    "scorer_first_name": {
+      "position": [2,0],
+      "relative":{
+        "to": "badge",
+        "align": "right-top"
+      }
+    },
+    "scorer_last_name": {
+      "position": [0, 1],
+      "relative":{
+        "to": "scorer_first_name",
+        "align": "left-bottom"
+      }
+    }
+  },
+  "assists":{
+    "header": {
+      "position": [1,1],
+      "align":"left"
+    },
+    "scorer_last_name": {
+      "position": [0,1],
+      "relative":{
+        "to": "header",
+        "align": "left-bottom"
+      }
+    },
+    "assists_header": {
+      "position": [0,2],
+      "relative":{
+        "to": "scorer_last_name",
+        "align": "left-bottom"
+      }
+    },
+    "assist1_last_name": {
+      "position": [0, 2],
+      "relative":{
+        "to": "assists_header",
+        "align": "left-bottom"
+      }
+    },"assist2_last_name": {
+      "position": [0, 1],
+      "relative":{
+        "to": "assist1_last_name",
+        "align": "left-bottom"
       }
     }
   },
   "penalty":{
+    "header": {
+      "position": [1,1],
+      "align":"left"
+    },
     "team_name":{
-      "position": [1, 9]
+      "position": [1, 8]
     },
     "hashtag_dots":{
       "position": [2, 0],
@@ -127,7 +226,6 @@
         "align": "right"
       } 
     }
-    
   },
   "scoreticker": {
     "indicator_dots": {
@@ -159,8 +257,272 @@
     }
   },
   "seriesticker":{
-    "table":{
-      "position":[0,22]
+    "seperator":{
+      "position":[0,21]
+    },
+    "indicator_dots": {
+      "position": ["50%", ["100%", -1]],
+      "align": "center"
+    },
+    "default":{
+      "font": "_default"
+    },
+    "header":{
+      "position": ["50%",1],
+      "font": "_default",
+      "align": "center"
+    },
+    "overview":{
+      "position":["50%",8],
+      "font":"_default",
+      "align": "center"
+    },
+    "top_seed_bg": {
+      "position":[0,14],
+      "size":[14,7]
+    },
+    "bottom_seed_bg": {
+      "position":[0,22],
+      "size":[14,7]
+    },
+    "top_seed": {
+      "position":[1,15],
+      "font": "_default"
+    },
+    "bottom_seed": {
+      "position":[1,23],
+      "font": "_default"
+    },
+    "top_seed_score_1":{
+      "position":[1, 1],
+      "font": "_default",
+      "align": "center-center",
+      "relative": {
+        "to": "top_seed_score_1_bg",
+        "align": "center-center"
+      }
+    },
+    "top_seed_score_2":{
+      "position":[1, 1],
+      "font": "_default",
+      "align": "center-center",
+      "relative": {
+        "to": "top_seed_score_2_bg",
+        "align": "center-center"
+      }
+    },
+    "top_seed_score_3":{
+      "position":[1, 1],
+      "font": "_default",
+      "align": "center-center",
+      "relative": {
+        "to": "top_seed_score_3_bg",
+        "align": "center-center"
+      }
+    },
+    "top_seed_score_4":{
+      "position":[1, 1],
+      "font": "_default",
+      "align": "center-center",
+      "relative": {
+        "to": "top_seed_score_4_bg",
+        "align": "center-center"
+      }
+    },
+    "top_seed_score_5":{
+      "position":[1, 1],
+      "font": "_default",
+      "align": "center-center",
+      "relative": {
+        "to": "top_seed_score_5_bg",
+        "align": "center-center"
+      }
+    },
+    "top_seed_score_6":{
+      "position":[1, 1],
+      "font": "_default",
+      "align": "center-center",
+      "relative": {
+        "to": "top_seed_score_6_bg",
+        "align": "center-center"
+      }
+    },
+    "top_seed_score_7":{
+      "position":[1, 1],
+      "font": "_default",
+      "align": "center-center",
+      "relative": {
+        "to": "top_seed_score_7_bg",
+        "align": "center-center"
+      }
+    },
+    "top_seed_score_1_bg":{
+      "position":[1,0],
+      "size":[5,7],
+      "relative":{
+        "to": "top_seed_bg",
+        "align": "right"
+      }
+    },
+    "top_seed_score_2_bg":{
+      "position":[1,0],
+      "size":[5,7],
+      "relative": {
+        "to":"top_seed_score_1_bg",
+        "align":"right"
+      }
+    },
+    "top_seed_score_3_bg":{
+      "position":[1,0],
+      "size":[5,7],
+      "relative": {
+        "to":"top_seed_score_2_bg",
+        "align":"right"
+      }
+    },
+    "top_seed_score_4_bg":{
+      "position":[1,0],
+      "size":[5,7],
+      "relative": {
+        "to":"top_seed_score_3_bg",
+        "align":"right"
+      }
+    },
+    "top_seed_score_5_bg":{
+      "position":[1,0],
+      "size":[5,7],
+      "relative": {
+        "to":"top_seed_score_4_bg",
+        "align":"right"
+      }
+    },
+    "top_seed_score_6_bg":{
+      "position":[1,0],
+      "size":[5,7],
+      "relative": {
+        "to":"top_seed_score_5_bg",
+        "align":"right"
+      }
+    },
+    "top_seed_score_7_bg":{
+      "position":[1,0],
+      "size":[5,7],
+      "relative": {
+        "to":"top_seed_score_6_bg",
+        "align":"right"
+      }
+    },
+    "bottom_seed_score_1_bg":{
+      "position":[1,0],
+      "size":[5,7],
+      "relative":{
+        "to": "bottom_seed_bg",
+        "align": "right"
+      }
+    },
+    "bottom_seed_score_2_bg":{
+      "position":[1,0],
+      "size":[5,7],
+      "relative": {
+        "to":"bottom_seed_score_1_bg",
+        "align":"right"
+      }
+    },
+    "bottom_seed_score_3_bg":{
+      "position":[1,0],
+      "size":[5,7],
+      "relative": {
+        "to":"bottom_seed_score_2_bg",
+        "align":"right"
+      }
+    },
+    "bottom_seed_score_4_bg":{
+      "position":[1,0],
+      "size":[5,7],
+      "relative": {
+        "to":"bottom_seed_score_3_bg",
+        "align":"right"
+      }
+    },
+    "bottom_seed_score_5_bg":{
+      "position":[1,0],
+      "size":[5,7],
+      "relative": {
+        "to":"bottom_seed_score_4_bg",
+        "align":"right"
+      }
+    },
+    "bottom_seed_score_6_bg":{
+      "position":[1,0],
+      "size":[5,7],
+      "relative": {
+        "to":"bottom_seed_score_5_bg",
+        "align":"right"
+      }
+    },
+    "bottom_seed_score_7_bg":{
+      "position":[1,0],
+      "size":[5,7],
+      "relative": {
+        "to":"bottom_seed_score_6_bg",
+        "align":"right"
+      }
+    },
+    "bottom_seed_score_1":{
+      "position":[1, 1],
+      "align": "center-center",
+      "relative": {
+        "to": "bottom_seed_score_1_bg",
+        "align": "center-center"
+      }
+    },
+    "bottom_seed_score_2":{
+      "position":[1, 1],
+      "align": "center-center",
+      "relative": {
+        "to": "bottom_seed_score_2_bg",
+        "align": "center-center"
+      }
+    },
+    "bottom_seed_score_3":{
+      "position":[1, 1],
+      "align": "center-center",
+      "relative": {
+        "to": "bottom_seed_score_3_bg",
+        "align": "center-center"
+      }
+    },
+    "bottom_seed_score_4":{
+      "position":[1, 1],
+      "align": "center-center",
+      "relative": {
+        "to": "bottom_seed_score_4_bg",
+        "align": "center-center"
+      }
+    },
+    "bottom_seed_score_5":{
+      "position":[1, 1],
+      "align": "center-center",
+      "relative": {
+        "to": "bottom_seed_score_5_bg",
+        "align": "center-center"
+      }
+    },
+    "bottom_seed_score_6":{
+      "position":[1, 1],
+      "align": "center-center",
+      "relative": {
+        "to": "bottom_seed_score_6_bg",
+        "align": "center-center"
+      }
+    },
+    "bottom_seed_score_7":{
+      "position":[1, 1],
+      "align": "center-center",
+      "relative": {
+        "to": "bottom_seed_score_7_bg",
+        "align": "center-center"
+      }
     }
   },
   "wx_clock": {
@@ -246,12 +608,17 @@
         "align": "left"
       }
     },
+    "forecast_condition":{
+      "position": ["68%", "2%"],
+      "font": "wxicons_md",
+      "align": "top-right"
+    },
     "forecast_temp_hi":{
       "position": [-3, 0],
       "font": "wx_large",
       "align": "right",
       "relative": {
-        "to": "condition",
+        "to": "forecast_condition",
         "align": "left"
       }
     },
@@ -428,5 +795,60 @@
       "font": "wx_medium",
       "align": "center-bottom"
       }
+  },
+  "player_stats": {
+    "name": {
+      "position": ["50%", 0],
+      "align": "center-top",
+      "font": "small"
+    },
+    "team": {
+      "position": ["50%", 9],
+      "align": "center-top",
+      "font": "small"
+    },
+    "stat_1": {
+      "position": [0, 18],
+      "align": "left-top",
+      "font": "small"
+    },
+    "stat_2": {
+      "position": [32, 18],
+      "align": "left-top",
+      "font": "small"
+    },
+    "stat_3": {
+      "position": [0, 25],
+      "align": "left-top",
+      "font": "small"
+    },
+    "stat_4": {
+      "position": [32, 25],
+      "align": "left-top",
+      "font": "small"
+    },
+    "stat_5": {
+      "position": [0, 32],
+      "align": "left-top",
+      "font": "small"
+    }
+  },
+  "ovi_tracker": {
+    "logo": {
+      "position": [0, 0],
+      "align": "left"
+    },
+    "title": {
+      "position": [62, 1],
+      "align": "right-top"
+     }, 
+    "name": {
+      "position": [60, 10],
+      "align": "right-top"
+    },
+    "career_goals": {
+      "position": [60, 20],
+      "align": "right-top"
+    }
   }
 }

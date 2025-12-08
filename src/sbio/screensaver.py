@@ -6,6 +6,28 @@ from utils import timeValidator
 
 debug = logging.getLogger("scoreboard")
 
+def get_screensaver_start_time(start_t, stop_t, current_t):
+    # 1. Check if we are inside the active window
+    if start_t < stop_t:
+        # Standard Day logic
+        is_active = start_t <= current_t <= stop_t
+    else:
+        # Overnight logic (22:00 to 06:15)
+        is_active = current_t >= start_t or current_t <= stop_t
+
+    # 2. Determine the resulting start time
+    if is_active:
+        debug.info(f"Status: Current time {current_t} is INSIDE the window.")
+        # We are live. Schedule for NOW + 5 mins.
+        # We need a dummy date to perform the addition, then strip it back to time.
+        full_now = datetime.combine(datetime.today(), current_t)
+        shifted_dt = full_now + timedelta(minutes=5)
+        return shifted_dt.time()
+    else:
+        debug.info(f"Status: Current time {current_t} is OUTSIDE the window.")
+        # We are not live yet. Schedule for the defined Start Time.
+        return start_t
+
 class screenSaver(object):
     def __init__(self, data, matrix,sleepEvent, scheduler):
 
@@ -42,15 +64,12 @@ class screenSaver(object):
                 debug.error("Stop time setting ({}) for screensaver is not a valid 12h or 24h format. Screen saver will not be used".format(data.config.screensaver_stop))
 
         if self.startsaver and self.stopsaver is not None:
-            shifted_dt = datetime.now() + timedelta(minutes=5)
-            self.shifted_time = shifted_dt.time()
-            
-            # Check to see if the current time is greater than start time but less than stop time.  If so, change the start time hour and min
-            if (self.startsaver < self.shifted_time < self.stopsaver):
-                scheduler.add_job(self.runSaver, 'cron', hour=self.startsaver.hour,minute=self.startsaver.minute,id='screenSaverON',misfire_grace_time=None)
-            else:
-                scheduler.add_job(self.runSaver, 'cron', hour=self.shifted_time.hour,minute=self.shifted_time.minute,id='screenSaverON',misfire_grace_time=None)
+            current_real_time = datetime.now().time()
 
+            scheduled_start = get_screensaver_start_time(self.startsaver, self.stopsaver, current_real_time)
+            
+            scheduler.add_job(self.runSaver, 'cron', hour=scheduled_start.hour,minute=scheduled_start.minute,id='screenSaverON',misfire_grace_time=None)
+            
             scheduler.add_job(self.stopSaver, 'cron', hour=self.stopsaver.hour, minute=self.stopsaver.minute,id='screenSaverOFF',misfire_grace_time=None)
             startrun = self.scheduler.get_job('screenSaverON').next_run_time
             stoprun = self.scheduler.get_job('screenSaverOFF').next_run_time

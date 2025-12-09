@@ -109,21 +109,32 @@ class screenSaver(object):
 
 
     def stopSaver(self):
-        #Stop screen saver board, Fade brightness back to last setting
+        # Stop screen saver board, Fade brightness back to last setting
         if self.data.prev_board is not None:
             debug.info("Screen saver stopped.... Starting next displayed board " + self.data.prev_board)
         else:
             debug.info("Screen saver stopped.... Starting next displayed board (not set)")
 
-        #Resume all paused jobs
+        # Resume all paused jobs
         if not self.data.config.screensaver_data_updates:
             alljobs = self.scheduler.get_jobs()
-            #debug.info(alljobs)
-            #Loop through the jobs and resume if not named screenSaverOn or screenSaverOFF
+            # Loop through the jobs and resume if not named screenSaverOn or screenSaverOFF
             debug.info("Resuming all paused jobs while screensaver off")
             for job in alljobs:
                 if "screenSaver" not in job.id:
                     job.resume()
+
+        # Reschedule screenSaverON to the original start time
+        # This ensures that if the time was shifted by runSaver (due to a live game), 
+        # it is reset to the standard config time for the next day.
+        if self.startsaver:
+            self.scheduler.reschedule_job(
+                'screenSaverON', 
+                trigger='cron', 
+                hour=self.startsaver.hour, 
+                minute=self.startsaver.minute
+            )
+            debug.info("Ensured screenSaverON is reset to original start time: {}:{}".format(self.startsaver.hour, self.startsaver.minute))
 
         self.data.screensaver = False
         self.data.screensaver_displayed = False
@@ -137,4 +148,3 @@ class screenSaver(object):
                 self.matrix.set_brightness(i)
                 i += 1
                 sleep(0.1)
-

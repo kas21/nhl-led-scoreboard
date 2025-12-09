@@ -8,8 +8,7 @@
       "position": ["0%", 0]
     },
     "logo": {
-      "position": [["100%", 1], 0],
-      "align": "right"
+      "position": ["65%", 0]
     }
   },
   "scoreboard": {

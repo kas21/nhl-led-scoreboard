@@ -7,12 +7,25 @@ SBHOME=$HOME/nhl-led-scoreboard
 ARCH=$(uname -m)
 DEBIAN_VERSION=$(cat /etc/debian_version)
 
-# Comment out next line if not running from image
-#cd $SBHOME
+if [ -d "/home/pi/.nhlledportal" ]; then
+  cd "$SBHOME"
+else
+  DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+  cd "${DIR}"
+fi
 
-#Uncomment for running out of the repository scripts/sbtools directory
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-cd "${DIR}"
+# Activate virtual environment if it exists
+if [ -f "$HOME/nhlsb-venv/bin/activate" ]; then
+  printf "${YELLOW}%s${RESET}\n" "Activating Python virtual environment..."
+  . "$HOME/nhlsb-venv/bin/activate"
+  if [ -n "$VIRTUAL_ENV" ]; then
+    printf "${GREEN}Virtual environment activated:${RESET} %s\n" "$VIRTUAL_ENV"
+  else
+    printf "${RED}Virtual environment activation failed.${RESET}\n"
+  fi
+else
+    printf "${YELLOW}%s${RESET}\n" "Virtual environment not found at $HOME/nhlsb-venv."
+fi
 
 # Don't run as root
 if [ $(id -u) -eq 0 ]; then
@@ -163,9 +176,13 @@ if git pull --rebase --stat origin main; then
        if ! git diff -s --exit-code HEAD "$last_commit" requirements.txt; then
           printf "${GREEN}%s${RESET}\n" "New python library requirements for this version, installing now"
           if [ -n "$VIRTUAL_ENV" ]; then
-                pip3 install -U -r requirements.txt
+                # Update pip in the virtual environment
+                printf "${GREEN}%s${RESET}\n" "Upgrading pip in the virtual environment..."
+                $VIRTUAL_ENV/bin/pip3 install --upgrade pip
+                # Install the new requirements
+                $VIRTUAL_ENV/bin/pip3 install -r requirements.txt
           else
-                sudo pip3 install -U -r requirements.txt
+             printf "${YELLOW}%s${RESET}\n" "Python virtual environment not active. Skipping dependency installation."
           fi
        else
           printf "${YELLOW}%s${RESET}\n" "No new python libraries required to be installed."

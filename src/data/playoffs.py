@@ -39,12 +39,15 @@ class Series:
         """
         try:
             series_info = client.get_series_record(series["seriesLetter"], data.status.season_id)
+            if series_info["total"] == 0:
+                debug.info("No series, playoffs not running?")
+                raise Exception("No series information")
         except Exception:
             debug.error(f"Failed to get series info for {series['seriesLetter']}")
             return
 
-        top = series_info["topSeedTeam"]
-        bottom = series_info["bottomSeedTeam"]
+        top = series_info["topSeed"]
+        bottom = series_info["bottomSeed"]
         top_team_abbrev = top["abbrev"]
         bottom_team_abbrev = bottom["abbrev"]
         to_win = series_info["neededToWin"]

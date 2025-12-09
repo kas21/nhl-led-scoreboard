@@ -6,6 +6,28 @@ from utils import timeValidator
 
 debug = logging.getLogger("scoreboard")
 
+def get_screensaver_start_time(start_t, stop_t, current_t):
+    # 1. Check if we are inside the active window
+    if start_t < stop_t:
+        # Standard Day logic
+        is_active = start_t <= current_t <= stop_t
+    else:
+        # Overnight logic (22:00 to 06:15)
+        is_active = current_t >= start_t or current_t <= stop_t
+
+    # 2. Determine the resulting start time
+    if is_active:
+        debug.info(f"Status: Current time {current_t} is INSIDE the window.")
+        # We are live. Schedule for NOW + 5 mins.
+        # We need a dummy date to perform the addition, then strip it back to time.
+        full_now = datetime.combine(datetime.today(), current_t)
+        shifted_dt = full_now + timedelta(minutes=5)
+        return shifted_dt.time()
+    else:
+        debug.info(f"Status: Current time {current_t} is OUTSIDE the window.")
+        # We are not live yet. Schedule for the defined Start Time.
+        return start_t
+
 class screenSaver(object):
     def __init__(self, data, matrix,sleepEvent, scheduler):
 
@@ -42,13 +64,12 @@ class screenSaver(object):
                 debug.error("Stop time setting ({}) for screensaver is not a valid 12h or 24h format. Screen saver will not be used".format(data.config.screensaver_stop))
 
         if self.startsaver and self.stopsaver is not None:
-            self.shifted_time = datetime.time(datetime.now() + timedelta(minutes=5))
-            # Check to see if the current time is greater than start time but less than stop time.  If so, change the start time hour and min
-            if (self.shifted_time > self.startsaver) and (self.shifted_time < self.stopsaver):
-                scheduler.add_job(self.runSaver, 'cron', hour=self.startsaver.hour,minute=self.startsaver.minute,id='screenSaverON',misfire_grace_time=None)
-            else:
-                scheduler.add_job(self.runSaver, 'cron', hour=self.shifted_time.hour,minute=self.shifted_time.minute,id='screenSaverON',misfire_grace_time=None)
+            current_real_time = datetime.now().time()
 
+            scheduled_start = get_screensaver_start_time(self.startsaver, self.stopsaver, current_real_time)
+            
+            scheduler.add_job(self.runSaver, 'cron', hour=scheduled_start.hour,minute=scheduled_start.minute,id='screenSaverON',misfire_grace_time=None)
+            
             scheduler.add_job(self.stopSaver, 'cron', hour=self.stopsaver.hour, minute=self.stopsaver.minute,id='screenSaverOFF',misfire_grace_time=None)
             startrun = self.scheduler.get_job('screenSaverON').next_run_time
             stoprun = self.scheduler.get_job('screenSaverOFF').next_run_time
@@ -88,21 +109,32 @@ class screenSaver(object):
 
 
     def stopSaver(self):
-        #Stop screen saver board, Fade brightness back to last setting
+        # Stop screen saver board, Fade brightness back to last setting
         if self.data.prev_board is not None:
             debug.info("Screen saver stopped.... Starting next displayed board " + self.data.prev_board)
         else:
             debug.info("Screen saver stopped.... Starting next displayed board (not set)")
 
-        #Resume all paused jobs
+        # Resume all paused jobs
         if not self.data.config.screensaver_data_updates:
             alljobs = self.scheduler.get_jobs()
-            #debug.info(alljobs)
-            #Loop through the jobs and resume if not named screenSaverOn or screenSaverOFF
+            # Loop through the jobs and resume if not named screenSaverOn or screenSaverOFF
             debug.info("Resuming all paused jobs while screensaver off")
             for job in alljobs:
                 if "screenSaver" not in job.id:
                     job.resume()
+
+        # Reschedule screenSaverON to the original start time
+        # This ensures that if the time was shifted by runSaver (due to a live game), 
+        # it is reset to the standard config time for the next day.
+        if self.startsaver:
+            self.scheduler.reschedule_job(
+                'screenSaverON', 
+                trigger='cron', 
+                hour=self.startsaver.hour, 
+                minute=self.startsaver.minute
+            )
+            debug.info("Ensured screenSaverON is reset to original start time: {}:{}".format(self.startsaver.hour, self.startsaver.minute))
 
         self.data.screensaver = False
         self.data.screensaver_displayed = False
@@ -116,4 +148,3 @@ class screenSaver(object):
                 self.matrix.set_brightness(i)
                 i += 1
                 sleep(0.1)
-

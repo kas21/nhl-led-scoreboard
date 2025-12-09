@@ -9,7 +9,7 @@
         "zoom": "80%",
         "position": [0, 3]
       },
-      "ARI": {
+      "UTA": {
         "zoom": "100%",
         "position": [1, 0]
       },
@@ -169,7 +169,7 @@
           "position": [7, 3]
         }
       },
-      "ARI": {
+      "UTA": {
         "home": {
           "zoom": "100%",
           "position": [-8, 0]

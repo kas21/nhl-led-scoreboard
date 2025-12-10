@@ -38,11 +38,13 @@ class StatsLeadersBoard(BoardBase):
             self.font_height = 13
             self.width_multiplier = 2
             self.last_name_offset = -1
+            self.last_name_max_len = 11
         else:
             self.font = data.config.layout.font
             self.font_height = 7
             self.width_multiplier = 1
             self.last_name_offset = 0
+            self.last_name_max_len = 9
 
         # Dictionary mapping API categories to display names
         self.categories = {
@@ -99,6 +101,12 @@ class StatsLeadersBoard(BoardBase):
             debug.error(f"Error rendering stats leaders: {str(e)}")
             debug.error(f"Stack trace: {traceback.format_exc()}")
 
+    def format_toi(self, seconds):
+        """Convert seconds to MM:SS format for time on ice display."""
+        minutes = int(seconds // 60)
+        secs = int(seconds % 60)
+        return f"{minutes}:{secs:02d}"
+
     def draw_leaders(self, category, leaders_data, img_height, width):
         """Draw an image showing the stat leaders with dynamic font sizing"""
 
@@ -118,9 +126,13 @@ class StatsLeadersBoard(BoardBase):
         # Draw each player's stats
         for idx, player in enumerate(leaders_data):
             # Get player info from structured data
-            last_name = player.last_name
+            last_name = player.last_name[:self.last_name_max_len]
             abbrev = player.team_abbrev
-            stat = str(player.value)
+            # Format TOI as MM:SS, otherwise use raw value
+            if category == 'toi':
+                stat = self.format_toi(player.value)
+            else:
+                stat = str(player.value)
             rank = str(idx + 1)
 
             # Get team colors
@@ -130,20 +142,20 @@ class StatsLeadersBoard(BoardBase):
             txt_color = team_colors.color(f"{team_id}.text")
 
             # Draw rank (white) - scale x position
-            draw.text((1 * self.width_multiplier, row_pos), rank + ".", font=self.font)
+            draw.text((1 * self.width_multiplier, row_pos), rank, font=self.font)
 
             # Calculate name width for background rectangle
             name_width = self.font.getlength(last_name)
 
             # Draw background rectangle for name - scale x positions
-            rect_x = 14 * self.width_multiplier
+            rect_x = 8 * self.width_multiplier
             draw.rectangle(
                 [rect_x, row_pos, rect_x + name_width, row_pos + row_height - 1],
                 fill=(bg_color['r'], bg_color['g'], bg_color['b'])
             )
 
             # Draw last name (in team text color) - scale x position
-            draw.text((15 * self.width_multiplier + self.last_name_offset, row_pos), last_name,
+            draw.text((9 * self.width_multiplier + self.last_name_offset, row_pos), last_name,
                      fill=(txt_color['r'], txt_color['g'], txt_color['b']),
                      font=self.font)
 

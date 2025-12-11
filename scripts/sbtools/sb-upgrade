@@ -65,11 +65,11 @@ function download_nhl_setup() {
   if [[ "$DEBIAN_VERSION" == "13"* ]]; then
       if [ "$ARCH" = "aarch64" ]; then
           echo "64-bit ARM architecture detected. Downloading and installing nhl_setup..."
-          wget https://github.com/falkyre/nhl-setup/releases/latest/download/nhl_setup.64 -O $SBHOME/nhl_setup
+          wget https://github.com/falkyre/nhl-setup/releases/download/latest-cli/nhl_setup.64 -O $SBHOME/nhl_setup
           chmod +x $SBHOME/nhl_setup
       elif [ "$ARCH" = "armv7l" ]; then
           echo "32-bit ARM architecture detected. Downloading and installing nhl_setup..."
-          wget https://github.com/falkyre/nhl-setup/releases/latest/download/nhl_setup.32 -O $SBHOME/nhl_setup
+          wget https://github.com/falkyre/nhl-setup/releases/download/latest-cli/nhl_setup.32 -O $SBHOME/nhl_setup
           chmod +x $SBHOME/nhl_setup
       else
           echo "Unsupported architecture for nhl_setup: $ARCH"
@@ -77,11 +77,11 @@ function download_nhl_setup() {
   elif [[ "$DEBIAN_VERSION" == "12"* ]]; then
       if [ "$ARCH" = "aarch64" ]; then
           echo "64-bit ARM architecture detected. Downloading and installing nhl_setup..."
-          wget https://github.com/falkyre/nhl-setup/releases/latest/download/nhl_setup.bookworm.64 -O $SBHOME/nhl_setup
+          wget https://github.com/falkyre/nhl-setup/releases/download/latest-cli/nhl_setup.bookworm.64 -O $SBHOME/nhl_setup
           chmod +x $SBHOME/nhl_setup
       elif [ "$ARCH" = "armv7l" ]; then
           echo "32-bit ARM architecture detected. Downloading and installing nhl_setup..."
-          wget https://github.com/falkyre/nhl-setup/releases/latest/download/nhl_setup.bookworm.32 -O $SBHOME/nhl_setup
+          wget https://github.com/falkyre/nhl-setup/releases/download/latest-cli/nhl_setup.bookworm.32 -O $SBHOME/nhl_setup
           chmod +x $SBHOME/nhl_setup
       else
           echo "Unsupported architecture for nhl_setup: $ARCH"

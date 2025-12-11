@@ -24,6 +24,6 @@ diskcache
 backoff
 bottleneck==1.4.2
 pandas==2.2.3
-env-canada>=0.12.1
+env-canada>=0.12.2
 httpx==0.28.1
 watchdog

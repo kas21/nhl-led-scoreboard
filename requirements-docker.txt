@@ -21,6 +21,6 @@ RGBMatrixEmulator
 tk
 diskcache
 backoff
-env-canada>=0.12.1
+env-canada>=0.12.2
 httpx==0.28.1
 watchdog

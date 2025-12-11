@@ -8,13 +8,6 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Turns off buffering for easier container logging
 ENV PYTHONUNBUFFERED=1
 
-# RUN apt-get update && apt-get install -y --no-install-recommends \
-#     git \
-#     ca-certificates \
-#     python3-cairosvg \
-#     && rm -rf /var/lib/apt/lists/* \
-#     && apt-get clean
-
 
 # Install pip requirements
 COPY requirements-docker.txt requirements.txt

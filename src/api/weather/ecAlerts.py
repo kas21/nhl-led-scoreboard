@@ -53,18 +53,30 @@ class ecWxAlerts(object):
                 item = items[0]
                 raw_title = item.get("title", "")
                 raw_date = item.get("date", "")[:-4]
+                raw_expiry = item.get("expiryTime", "")
+
 
                 # --- 1. DEFAULT VALUES (Legacy Fallback) ---
                 # Default mapping if no color is found in the string
-                if key == 'warnings':
-                    category = "warning"
-                    color = rgb_red
-                elif key == 'watches':
-                    category = "watch"
-                    color = rgb_orange
-                elif key == 'advisories':
-                    category = "advisory"
-                    color = rgb_yellow
+                if 'alertColourLevel' in item:
+                    if item['alertColourLevel'] == "red":
+                        color = rgb_red
+                    elif item['alertColourLevel'] == "orange":
+                        color = rgb_orange
+                    elif item['alertColourLevel'] == "yellow":
+                        color = rgb_yellow
+                    else:
+                        color = rgb_gray
+                else:
+                    if key == 'warnings':
+                        category = "warning"
+                        color = rgb_red
+                    elif key == 'watches':
+                        category = "watch"
+                        color = rgb_orange
+                    elif key == 'advisories':
+                        category = "advisory"
+                        color = rgb_yellow
 
                 clean_title = raw_title
 
@@ -78,12 +90,13 @@ class ecWxAlerts(object):
                     description_part = parts[1]
 
                     # Extract Color and assign RGB Tuple
-                    if "red" in header_part:
-                        color = rgb_red
-                    elif "orange" in header_part:
-                        color = rgb_orange
-                    elif "yellow" in header_part:
-                        color = rgb_yellow
+                    if 'alertColourLevel' not in item:
+                        if "red" in header_part:
+                            color = rgb_red
+                        elif "orange" in header_part:
+                            color = rgb_orange
+                        elif "yellow" in header_part:
+                            color = rgb_yellow
 
                     # Extract Category
                     if "warning" in header_part:
@@ -100,15 +113,18 @@ class ecWxAlerts(object):
                     if lower_title.endswith(" warning"):
                         clean_title = raw_title[:-(len(" Warning"))]
                         category = "warning"
-                        color = rgb_red
+                        if 'alertColourLevel' not in item:
+                            color = rgb_red
                     elif lower_title.endswith(" watch"):
                         clean_title = raw_title[:-(len(" Watch"))]
                         category = "watch"
-                        color = rgb_orange
+                        if 'alertColourLevel' not in item:
+                            color = rgb_orange
                     elif lower_title.endswith(" advisory"):
                         clean_title = raw_title[:-(len(" Advisory"))]
                         category = "advisory"
-                        color = rgb_yellow
+                        if 'alertColourLevel' not in item:
+                            color = rgb_yellow
 
                 # --- 3. TIME FORMATTING ---
                 try:
@@ -120,9 +136,22 @@ class ecWxAlerts(object):
                 except ValueError:
                     formatted_time = raw_date
 
+                if raw_expiry:
+                    try:
+                        expiry_datetime = datetime.datetime.strptime(raw_expiry, '%Y%m%d%H%M%S')
+                        if self.time_format == "%H:%M":
+                            formatted_expiry = expiry_datetime.strftime("%m/%d %H:%M")
+                        else:
+                            formatted_expiry = expiry_datetime.strftime("%m/%d %I:%M %p")
+                    except ValueError:
+                        formatted_expiry = raw_expiry
+                else:
+                    formatted_expiry = ""
+
+
                 # --- 4. ADD TO LIST ---
                 # Structure: [Title, Category, Time, RGB Tuple]
-                found_alerts.append([clean_title, category, formatted_time, color])
+                found_alerts.append([clean_title, category, formatted_time, color, formatted_expiry])
 
         # --- PROCESS RESULTS ---
         num_alerts = len(found_alerts)

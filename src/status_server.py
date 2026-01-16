@@ -44,9 +44,19 @@ class StatusHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data, indent=2, default=str).encode())
 
+    def _send_html(self, html: str, status: int = 200):
+        """Send an HTML response."""
+        self.send_response(status)
+        self.send_header('Content-Type', 'text/html')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(html.encode())
+
     def do_GET(self):
         """Handle GET requests."""
-        if self.path == '/health':
+        if self.path == '/':
+            self._handle_index()
+        elif self.path == '/health':
             self._handle_health()
         elif self.path == '/status':
             self._handle_status()
@@ -56,6 +66,54 @@ class StatusHandler(BaseHTTPRequestHandler):
             self._handle_scheduler()
         else:
             self._send_json({"error": "Not found", "endpoints": ["/health", "/status", "/workers", "/scheduler"]}, 404)
+
+    def _handle_index(self):
+        """Render the index page with links to all endpoints."""
+        html = """<!DOCTYPE html>
+<html>
+<head>
+    <title>NHL LED Scoreboard - Status Server</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+               max-width: 600px; margin: 50px auto; padding: 20px; background: #1a1a2e; color: #eee; }
+        h1 { color: #00d4ff; }
+        .endpoints { list-style: none; padding: 0; }
+        .endpoints li { margin: 15px 0; }
+        .endpoints a { color: #00d4ff; text-decoration: none; font-size: 1.2em;
+                       padding: 10px 15px; display: inline-block; background: #16213e;
+                       border-radius: 5px; transition: background 0.2s; }
+        .endpoints a:hover { background: #0f3460; }
+        .desc { color: #888; font-size: 0.9em; margin-left: 15px; }
+        .footer { margin-top: 40px; color: #666; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+    <h1>NHL LED Scoreboard</h1>
+    <p>Status Server API</p>
+    <ul class="endpoints">
+        <li>
+            <a href="/status">/status</a>
+            <span class="desc">Full status (app, workers, scheduler)</span>
+        </li>
+        <li>
+            <a href="/workers">/workers</a>
+            <span class="desc">Worker status only</span>
+        </li>
+        <li>
+            <a href="/scheduler">/scheduler</a>
+            <span class="desc">Scheduler jobs only</span>
+        </li>
+        <li>
+            <a href="/health">/health</a>
+            <span class="desc">Simple health check</span>
+        </li>
+    </ul>
+    <div class="footer">
+        All endpoints return JSON. Use <code>curl</code> or your browser to query them.
+    </div>
+</body>
+</html>"""
+        self._send_html(html)
 
     def _handle_health(self):
         """Simple health check."""

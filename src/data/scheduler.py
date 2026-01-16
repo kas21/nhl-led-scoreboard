@@ -277,7 +277,7 @@ class SchedulerManager:
         # but for nwo we will just pull the data and cache it.  It's minimal.
         job_id = self.KNOWN_JOB_IDS["statsLeadersWorker"]
         if not self._job_exists(job_id, existing_ids):
-            StatsLeadersWorker(
+            self.data.stats_leaders_worker = StatsLeadersWorker(
                 self.data,
                 self.data.scheduler,
                 categories=self.data.config.stats_leaders_categories,
@@ -292,7 +292,7 @@ class SchedulerManager:
         # Fetches standings data in the background and caches it
         job_id = self.KNOWN_JOB_IDS["standingsWorker"]
         if not self._job_exists(job_id, existing_ids):
-            StandingsWorker(
+            self.data.standings_worker = StandingsWorker(
                 self.data,
                 self.data.scheduler,
                 refresh_minutes=60  # Refresh every hour (standings don't change frequently)
@@ -307,7 +307,7 @@ class SchedulerManager:
         # Real-time live game data is handled separately by LiveGameWorker
         job_id = self.KNOWN_JOB_IDS["gamesWorker"]
         if not self._job_exists(job_id, existing_ids):
-            GamesWorker(
+            self.data.games_worker = GamesWorker(
                 self.data,
                 self.data.scheduler,
                 refresh_seconds=60  # Base interval for ticker (adaptive: 1min-30min)
@@ -321,7 +321,7 @@ class SchedulerManager:
         # Fetches previous/next game data for preferred teams (used by team_summary board)
         job_id = self.KNOWN_JOB_IDS["teamScheduleWorker"]
         if not self._job_exists(job_id, existing_ids):
-            TeamScheduleWorker(
+            self.data.team_schedule_worker = TeamScheduleWorker(
                 self.data,
                 self.data.scheduler,
                 refresh_minutes=30  # Refresh every 30 minutes

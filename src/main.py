@@ -130,6 +130,10 @@ def run():
     data.scheduler_manager = scheduler_manager
     screensaver = scheduler_manager.schedule_jobs()
 
+    # Start the status server for worker/scheduler monitoring
+    from status_server import start_status_server
+    start_status_server(data)
+
     # Create a queue for scoreboard events and info to be sent to an MQTT broker
     sbQueue = queue.Queue()
 

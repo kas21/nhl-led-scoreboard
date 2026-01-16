@@ -288,6 +288,45 @@ class BaseWorker(ABC, Generic[T]):
             return entry.fetched_at
         return None
 
+    def get_status(self) -> dict:
+        """
+        Get the current status of this worker.
+
+        Returns:
+            Dict with worker status information
+        """
+        # Try to get job info from scheduler
+        next_run = None
+        try:
+            job = self.scheduler.get_job(self.JOB_ID)
+            if job:
+                next_run = job.next_run_time
+        except Exception:
+            pass
+
+        # Get cache info
+        entry = self.get_cached_entry()
+        fetched_at = None
+        cache_age = None
+        if entry and isinstance(entry, CacheEntry):
+            fetched_at = entry.fetched_at
+            cache_age = entry.age_seconds
+
+        return {
+            "worker": self.__class__.__name__,
+            "job_id": self.JOB_ID,
+            "cache_key": self.CACHE_KEY,
+            "is_active": True,
+            "refresh_seconds": self.current_refresh_seconds,
+            "base_refresh_seconds": getattr(self, 'refresh_seconds', self.current_refresh_seconds),
+            "jitter": self.jitter,
+            "ttl_buffer": self.ttl_buffer,
+            "next_run_time": next_run.isoformat() if next_run else None,
+            "fetched_at": fetched_at.isoformat() if fetched_at else None,
+            "cache_age_seconds": round(cache_age, 1) if cache_age is not None else None,
+            "is_cached": entry is not None,
+        }
+
 
 class LifecycleWorker(ABC, Generic[T]):
     """
@@ -480,3 +519,47 @@ class LifecycleWorker(ABC, Generic[T]):
         if entry and isinstance(entry, CacheEntry):
             return entry.fetched_at
         return None
+
+    def get_status(self) -> dict:
+        """
+        Get the current status of this lifecycle worker.
+
+        Returns:
+            Dict with worker status information
+        """
+        # Try to get job info from scheduler
+        next_run = None
+        if self.is_monitoring:
+            try:
+                job = self.scheduler.get_job(self.JOB_ID)
+                if job:
+                    next_run = job.next_run_time
+            except Exception:
+                pass
+
+        # Get cache info for current resource
+        fetched_at = None
+        cache_age = None
+        is_cached = False
+        if self.current_resource_id is not None:
+            entry = self.get_cached_entry(self.current_resource_id)
+            if entry and isinstance(entry, CacheEntry):
+                fetched_at = entry.fetched_at
+                cache_age = entry.age_seconds
+                is_cached = True
+
+        return {
+            "worker": self.__class__.__name__,
+            "job_id": self.JOB_ID,
+            "cache_key_prefix": self.CACHE_KEY_PREFIX,
+            "is_active": self.is_monitoring,
+            "is_monitoring": self.is_monitoring,
+            "current_resource_id": self.current_resource_id,
+            "refresh_seconds": self.current_refresh_seconds,
+            "jitter": self.jitter,
+            "ttl_buffer": self.ttl_buffer,
+            "next_run_time": next_run.isoformat() if next_run else None,
+            "fetched_at": fetched_at.isoformat() if fetched_at else None,
+            "cache_age_seconds": round(cache_age, 1) if cache_age is not None else None,
+            "is_cached": is_cached,
+        }

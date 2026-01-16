@@ -608,6 +608,126 @@ def cmd_refresh_info(args):
     return 0
 
 
+# Status server port
+STATUS_SERVER_PORT = 5005
+
+
+def cmd_status(args):
+    """Query the running app's status server for live worker/scheduler info."""
+    import urllib.request
+    import urllib.error
+
+    port = args.port or STATUS_SERVER_PORT
+    url = f"http://localhost:{port}/status"
+
+    print(f"\n{'='*80}")
+    print(f"Live Application Status (port {port})")
+    print(f"{'='*80}\n")
+
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+            data = json.loads(response.read().decode())
+    except urllib.error.URLError as e:
+        print(f"Could not connect to status server at {url}")
+        print(f"Error: {e.reason}")
+        print(f"\nMake sure the scoreboard app is running.")
+        print(f"The status server starts automatically on port {STATUS_SERVER_PORT}.")
+        return 1
+    except Exception as e:
+        print(f"Error querying status server: {e}")
+        return 1
+
+    # App status
+    app = data.get("app", {})
+    print(f"App Status: {'✓ Running' if app.get('running') else '✗ Not Running'}")
+    if app.get("pid"):
+        print(f"PID: {app['pid']}")
+    if app.get("uptime_seconds"):
+        uptime = app["uptime_seconds"]
+        hours, remainder = divmod(int(uptime), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        if hours:
+            print(f"Uptime: {hours}h {minutes}m {seconds}s")
+        elif minutes:
+            print(f"Uptime: {minutes}m {seconds}s")
+        else:
+            print(f"Uptime: {seconds}s")
+    print()
+
+    # Workers
+    workers = data.get("workers", {})
+    if workers:
+        print("Workers:")
+        print("-" * 60)
+        for name, w in workers.items():
+            if "error" in w:
+                print(f"┌─ {name}")
+                print(f"│  Error: {w['error']}")
+                print(f"└{'─'*40}\n")
+                continue
+
+            status = "✓ Active" if w.get("is_active") else "✗ Inactive"
+            print(f"┌─ {w.get('worker', name)}")
+            print(f"│  Status: {status}")
+
+            # Show monitoring info for lifecycle workers
+            if w.get("is_monitoring") is not None:
+                if w.get("is_monitoring"):
+                    print(f"│  Monitoring: {w.get('current_resource_id')}")
+                else:
+                    print(f"│  Monitoring: None")
+
+            # Refresh info
+            refresh = w.get("refresh_seconds")
+            base_refresh = w.get("base_refresh_seconds")
+            if refresh and base_refresh and refresh != base_refresh:
+                print(f"│  Refresh: {refresh}s (adaptive, base: {base_refresh}s)")
+            elif refresh:
+                print(f"│  Refresh: {refresh}s")
+
+            # Cache info
+            if w.get("cache_age_seconds") is not None:
+                age = w["cache_age_seconds"]
+                print(f"│  Last fetch: {format_timedelta(timedelta(seconds=age))} ago")
+
+            # Next run
+            if w.get("next_run_time"):
+                try:
+                    next_run = datetime.fromisoformat(w["next_run_time"])
+                    delta = next_run - datetime.now(next_run.tzinfo)
+                    if delta.total_seconds() > 0:
+                        print(f"│  Next fetch: in {format_timedelta(delta)}")
+                    else:
+                        print(f"│  Next fetch: imminent")
+                except:
+                    print(f"│  Next run: {w['next_run_time']}")
+
+            print(f"└{'─'*40}\n")
+
+    # Scheduler jobs
+    scheduler = data.get("scheduler", {})
+    jobs = scheduler.get("jobs", [])
+    if jobs:
+        print("Scheduler Jobs:")
+        print("-" * 60)
+        print(f"{'Job ID':<25} {'Next Run':<25} {'Trigger'}")
+        print(f"{'-'*25} {'-'*25} {'-'*30}")
+        for job in sorted(jobs, key=lambda j: j.get("next_run_time") or ""):
+            job_id = job.get("id", "?")[:24]
+            next_run = "?"
+            if job.get("next_run_time"):
+                try:
+                    dt = datetime.fromisoformat(job["next_run_time"])
+                    next_run = dt.strftime("%H:%M:%S")
+                except:
+                    next_run = job["next_run_time"][:24]
+            trigger = str(job.get("trigger", "?"))[:30]
+            print(f"{job_id:<25} {next_run:<25} {trigger}")
+        print()
+
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="NHL LED Scoreboard Cache Manager",
@@ -619,9 +739,10 @@ Examples:
   %(prog)s inspect nhl_standings -f Show full cache value
   %(prog)s delete nhl_games_today   Delete games cache
   %(prog)s clear --confirm          Clear entire cache
-  %(prog)s workers                  Show worker status
+  %(prog)s workers                  Show worker cache status
   %(prog)s stats                    Show cache statistics
   %(prog)s freshness                Show when data was fetched
+  %(prog)s status                   Query running app for live status
         """
     )
 
@@ -662,6 +783,12 @@ Examples:
     # freshness command
     freshness_parser = subparsers.add_parser("freshness", help="Show cache freshness")
     freshness_parser.set_defaults(func=cmd_refresh_info)
+
+    # status command (queries running app)
+    status_parser = subparsers.add_parser("status", help="Query running app for live status")
+    status_parser.add_argument("-p", "--port", type=int, default=None,
+                               help=f"Status server port (default: {STATUS_SERVER_PORT})")
+    status_parser.set_defaults(func=cmd_status)
 
     args = parser.parse_args()
 

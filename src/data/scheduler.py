@@ -97,8 +97,9 @@ class SchedulerManager:
         self.commandArgs = args()
 
         # Initialize LiveGameWorker instance (not monitoring yet)
-        from nhl_api.workers import LiveGameWorker
+        from nhl_api.workers import LiveGameWorker, GameStoryWorker
         self.data.live_game_worker = LiveGameWorker(data, data.scheduler)
+        self.data.game_story_worker = GameStoryWorker(data, data.scheduler)
 
     def _get_existing_job_ids(self) -> List[str]:
         """Return list of job ids currently in the scheduler (defensive)."""

@@ -1,0 +1,6 @@
+{
+  "display_duration": 5,
+  "animate_bars": true,
+  "categories": ["shots", "hits", "faceoff", "powerplay"],
+  "enabled": true
+}

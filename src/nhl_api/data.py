@@ -69,6 +69,22 @@ def get_game_status():
     return client.get_game_status()
 
 
+def get_game_story(game_id: int):
+    """
+    Get game story with team stats for intermission/post-game display.
+
+    Returns team comparison stats including shots, hits, faceoff %,
+    power play, blocked shots, giveaways, and takeaways.
+
+    Args:
+        game_id: NHL game ID
+
+    Returns:
+        Game story data including teamGameStats array
+    """
+    return client.get_game_story(game_id)
+
+
 def get_teams():
     """
     Get all NHL teams information.

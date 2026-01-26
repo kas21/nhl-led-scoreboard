@@ -31,11 +31,13 @@
 			"clock"
 		],
 		"intermission": [
+			"intermission_stats",
 			"scoreticker",
 			"standings",
 			"team_summary"
 		],
 		"post_game": [
+			"intermission_stats",
 			"team_summary",
 			"scoreticker",
 			"standings",

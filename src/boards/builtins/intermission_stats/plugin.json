@@ -1,0 +1,17 @@
+{
+  "name": "Intermission Stats",
+  "description": "Display game comparison statistics during intermission and post-game",
+  "version": "1.0.0",
+  "author": "NHL LED Scoreboard",
+  "enabled": true,
+  "requirements": {
+    "app_version": ">=2025.01.00"
+  },
+  "boards": [
+    {
+      "id": "intermission_stats",
+      "class_name": "IntermissionStatsBoard",
+      "module": "board"
+    }
+  ]
+}

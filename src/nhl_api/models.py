@@ -693,3 +693,140 @@ class Standings:
                 self.western = WildcardStandings(western_teams)
 
         return WildcardConferences(self.eastern.teams, self.western.teams)
+
+
+# ============================================================================
+# Game Stats Models (for Intermission/Post-Game Display)
+# ============================================================================
+
+@dataclass
+class TeamGameStats:
+    """Team statistics for a single game (intermission/post-game display)."""
+    shots: int = 0
+    hits: int = 0
+    blocked_shots: int = 0
+    giveaways: int = 0
+    takeaways: int = 0
+    pim: int = 0
+    faceoff_pct: float = 0.0
+    power_play_goals: int = 0
+    power_play_opportunities: int = 0
+    power_play_pct: float = 0.0
+
+    @classmethod
+    def from_stats_list(cls, stats_list: List[Dict[str, Any]], is_home: bool) -> 'TeamGameStats':
+        """
+        Parse teamGameStats array from game-story API response.
+
+        Args:
+            stats_list: List of stat objects with category/homeValue/awayValue
+            is_home: Whether to extract home or away values
+        """
+        import logging
+        debug = logging.getLogger("scoreboard")
+
+        stats = cls()
+        value_key = 'homeValue' if is_home else 'awayValue'
+        team_label = 'HOME' if is_home else 'AWAY'
+
+        debug.info(f"TeamGameStats.from_stats_list: Parsing {team_label} stats from {len(stats_list)} items")
+
+        for stat in stats_list:
+            category = stat.get('category', '')
+            value = stat.get(value_key)
+            debug.debug(f"  {team_label} stat: category={category}, {value_key}={value}")
+
+            if value is None:
+                debug.debug(f"  {team_label} stat: Skipping {category} - value is None")
+                continue
+
+            if category == 'sog':
+                stats.shots = int(value) if value else 0
+                debug.debug(f"  {team_label} shots={stats.shots}")
+            elif category == 'hits':
+                stats.hits = int(value) if value else 0
+                debug.debug(f"  {team_label} hits={stats.hits}")
+            elif category == 'blockedShots':
+                stats.blocked_shots = int(value) if value else 0
+            elif category == 'giveaways':
+                stats.giveaways = int(value) if value else 0
+            elif category == 'takeaways':
+                stats.takeaways = int(value) if value else 0
+            elif category == 'pim':
+                stats.pim = int(value) if value else 0
+            elif category == 'faceoffWinningPctg':
+                # API returns decimal (0.47), convert to percentage (47.0)
+                stats.faceoff_pct = float(value) * 100 if value else 0.0
+                debug.debug(f"  {team_label} faceoff_pct={stats.faceoff_pct}")
+            elif category == 'powerPlay':
+                # Format: "2/4" - parse it
+                if value and '/' in str(value):
+                    parts = str(value).split('/')
+                    stats.power_play_goals = int(parts[0])
+                    stats.power_play_opportunities = int(parts[1])
+                    debug.debug(f"  {team_label} powerPlay={stats.power_play_goals}/{stats.power_play_opportunities}")
+            elif category == 'powerPlayPctg':
+                stats.power_play_pct = float(value) if value else 0.0
+
+        debug.info(
+            f"TeamGameStats.from_stats_list: {team_label} final - "
+            f"shots={stats.shots}, hits={stats.hits}, faceoff={stats.faceoff_pct}%, "
+            f"pp={stats.power_play_goals}/{stats.power_play_opportunities}"
+        )
+
+        return stats
+
+
+@dataclass
+class GameStoryStats:
+    """Complete game stats for both teams (from game-story API)."""
+    game_id: int
+    home_team_abbrev: str
+    away_team_abbrev: str
+    home_team_id: int
+    away_team_id: int
+    home_stats: TeamGameStats
+    away_stats: TeamGameStats
+    game_state: str
+    period: int
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'GameStoryStats':
+        """Create GameStoryStats from game-story API response."""
+        import logging
+        debug = logging.getLogger("scoreboard")
+
+        home_team = data.get('homeTeam', {})
+        away_team = data.get('awayTeam', {})
+
+        # Parse home and away stats from summary.teamGameStats array
+        # (teamGameStats is nested inside summary, not at top level)
+        summary = data.get('summary', {})
+        team_stats = summary.get('teamGameStats', [])
+
+        debug.info(
+            f"GameStoryStats.from_dict: game_id={data.get('id')}, "
+            f"state={data.get('gameState')}, "
+            f"home={home_team.get('abbrev')} (id={home_team.get('id')}), "
+            f"away={away_team.get('abbrev')} (id={away_team.get('id')})"
+        )
+        debug.info(f"GameStoryStats.from_dict: summary.teamGameStats has {len(team_stats)} items")
+
+        # Log the raw teamGameStats for debugging
+        if team_stats:
+            debug.debug(f"GameStoryStats.from_dict: Raw teamGameStats: {team_stats}")
+        else:
+            debug.warning("GameStoryStats.from_dict: teamGameStats is EMPTY!")
+            debug.warning(f"GameStoryStats.from_dict: summary keys: {list(summary.keys())}")
+
+        return cls(
+            game_id=data.get('id', 0),
+            home_team_abbrev=home_team.get('abbrev', ''),
+            away_team_abbrev=away_team.get('abbrev', ''),
+            home_team_id=home_team.get('id', 0),
+            away_team_id=away_team.get('id', 0),
+            home_stats=TeamGameStats.from_stats_list(team_stats, is_home=True),
+            away_stats=TeamGameStats.from_stats_list(team_stats, is_home=False),
+            game_state=data.get('gameState', ''),
+            period=data.get('periodDescriptor', {}).get('number', 0)
+        )

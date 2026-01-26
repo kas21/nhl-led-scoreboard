@@ -125,6 +125,10 @@ class MainRenderer:
         debug.info(f"Starting LiveGameWorker for game {self.data.current_game_id}")
         self.data.live_game_worker.start_monitoring(self.data.current_game_id)
 
+        # Start GameStoryWorker for intermission stats display
+        debug.info(f"Starting GameStoryWorker for game {self.data.current_game_id}")
+        self.data.game_story_worker.start_monitoring(self.data.current_game_id, refresh_seconds=30)
+
         try:
             # Initialize the scoreboard. get the current status at startup
             self.data.refresh_overview()
@@ -277,9 +281,11 @@ class MainRenderer:
                     self.matrix.update_indicator()
 
         finally:
-            # Stop LiveGameWorker when exiting game day mode
+            # Stop workers when exiting game day mode
             debug.info("Stopping LiveGameWorker (exiting game day mode)")
             self.data.live_game_worker.stop_monitoring()
+            debug.info("Stopping GameStoryWorker (exiting game day mode)")
+            self.data.game_story_worker.stop_monitoring()
 
 
     def __render_pregame(self, sbrenderer):

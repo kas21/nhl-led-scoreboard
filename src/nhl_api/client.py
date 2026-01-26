@@ -214,6 +214,22 @@ class NHLAPIClient:
         url = f"{self.BASE_URL}gameStatus"
         return self._request(url)
 
+    def get_game_story(self, game_id: int) -> Dict[str, Any]:
+        """
+        Get game story with team stats for intermission/post-game display.
+
+        Returns team comparison stats including shots, hits, faceoff %,
+        power play, blocked shots, giveaways, and takeaways.
+
+        Args:
+            game_id: NHL game ID
+
+        Returns:
+            Game story data including teamGameStats array
+        """
+        url = f"{self.BASE_URL}wsc/game-story/{game_id}"
+        return self._request(url)
+
     # =========================================================================
     # Team Endpoints
     # =========================================================================

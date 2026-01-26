@@ -21,7 +21,7 @@
                 {
                     "enum": [
                         "wxalert",
-                        "wxforecast", 
+                        "wxforecast",
                         "scoreticker",
                         "seriesticker",
                         "standings",
@@ -35,6 +35,7 @@
                         "player_stats",
                         "ovi_tracker",
                         "stats_leaders",
+                        "intermission_stats",
                         "nfl_team"
                     ]
                 },

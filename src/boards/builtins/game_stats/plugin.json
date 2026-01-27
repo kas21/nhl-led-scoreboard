@@ -9,9 +9,9 @@
   },
   "boards": [
     {
-      "id": "intermission_stats",
-      "class_name": "IntermissionStatsBoard",
-      "module": "intermission_stats"
+      "id": "game_stats",
+      "class_name": "GameStatsBoard",
+      "module": "game_stats"
     }
   ]
 }

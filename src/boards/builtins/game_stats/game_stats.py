@@ -1,5 +1,5 @@
 """
-Intermission Stats board module - Displays game comparison statistics.
+Game Stats board module - Displays game comparison statistics.
 
 Shows animated chart comparisons of team stats during intermission and post-game:
 - Shots on Goal
@@ -19,7 +19,7 @@ from renderer.charts import ChartRenderer
 debug = logging.getLogger("scoreboard")
 
 
-class IntermissionStatsBoard(BoardBase):
+class GameStatsBoard(BoardBase):
     """
     Displays game comparison statistics during intermission and post-game.
 
@@ -54,19 +54,19 @@ class IntermissionStatsBoard(BoardBase):
         )
 
     def render(self):
-        """Render the intermission stats display."""
+        """Render the game stats display."""
         # Get current game ID from data
         game_id = getattr(self.data, 'current_game_id', None)
         if not game_id:
-            debug.warning("IntermissionStatsBoard: No current game ID available")
+            debug.warning("GameStatsBoard: No current game ID available")
             return
 
-        debug.info(f"IntermissionStatsBoard: Looking for cached stats for game {game_id}")
+        debug.info(f"GameStatsBoard: Looking for cached stats for game {game_id}")
 
         # Get cached stats from worker
         stats = GameStoryWorker.get_game_stats(game_id)
         if not stats:
-            debug.warning(f"IntermissionStatsBoard: No cached stats for game {game_id}")
+            debug.warning(f"GameStatsBoard: No cached stats for game {game_id}")
             self._render_no_data()
             return
 

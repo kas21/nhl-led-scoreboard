@@ -5,7 +5,7 @@
     {
       "id": "season_countdown",
       "class_name": "SeasonCountdownBoard",
-      "module": "board"
+      "module": "season_countdown"
     }
   ]
 }

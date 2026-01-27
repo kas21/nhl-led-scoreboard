@@ -11,7 +11,7 @@
     {
       "id": "intermission_stats",
       "class_name": "IntermissionStatsBoard",
-      "module": "board"
+      "module": "intermission_stats"
     }
   ]
 }

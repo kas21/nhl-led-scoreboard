@@ -562,6 +562,75 @@ class Boards:
                 if not data.pb_trigger or not data.wx_alert_interrupt or not data.screensaver or not data.mqtt_trigger:
                     bord_index += 1
 
+    def _live(self, data, matrix, sleepEvent):
+        """
+        Board handler for Live game state (non-intermission).
+
+        Rotates through configured boards while the game is live.
+        Special handling for 'live_scoreboard' which renders the actual scoreboard.
+        """
+        # Snapshot the board list to avoid issues if config changes mid-loop
+        boards_list = list(data.config.boards_live)
+        bord_index = 0
+
+        while True:
+            board_id = boards_list[bord_index]
+            data.curr_board = board_id
+
+            if data.pb_trigger:
+                debug.info(
+                    "PushButton triggered....will display "
+                    + data.config.pushbutton_state_triggered1
+                    + " board "
+                    + "Overriding live -> "
+                    + board_id
+                )
+                if not data.screensaver:
+                    data.pb_trigger = False
+                board_id = data.config.pushbutton_state_triggered1
+                data.curr_board = board_id
+                bord_index -= 1
+
+            if data.mqtt_trigger:
+                debug.info(
+                    "MQTT triggered....will display "
+                    + data.mqtt_showboard
+                    + " board "
+                    + "Overriding live -> "
+                    + boards_list[bord_index]
+                )
+                if not data.screensaver:
+                    data.mqtt_trigger = False
+                board_id = data.mqtt_showboard
+                data.curr_board = board_id
+                bord_index -= 1
+
+            # Display the Weather Alert board
+            if data.wx_alert_interrupt:
+                debug.info("Weather Alert triggered in live game....will display weather alert board")
+                data.wx_alert_interrupt = False
+                # Display the board from the config
+                board_id = "wxalert"
+                data.curr_board = "wxalert"
+                bord_index -= 1
+
+            ## Don't Display the Screensaver Board in "live game mode"
+
+            # Render the selected board
+            try:
+                self.render_board(board_id, data, matrix, sleepEvent)
+            except ValueError:
+                debug.error(
+                    f"Board not found: {board_id}. "
+                    "Check board exists and config.json is correct"
+                )
+
+            if bord_index >= (len(boards_list) - 1):
+                return
+            else:
+                if not data.pb_trigger or not data.wx_alert_interrupt or not data.mqtt_trigger:
+                    bord_index += 1
+
     def _intermission(self, data, matrix, sleepEvent):
         # Snapshot the board list to avoid issues if config changes mid-loop
         boards_list = list(data.config.boards_intermission)

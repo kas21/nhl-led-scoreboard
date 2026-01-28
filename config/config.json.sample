@@ -30,6 +30,11 @@
 			"standings",
 			"clock"
 		],
+		"live": [
+			"live_scoreboard",
+			"game_stats",
+			"scoreticker"
+		],
 		"intermission": [
 			"intermission_stats",
 			"scoreticker",

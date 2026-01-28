@@ -46,7 +46,7 @@
                 }
             ]
         }
-    },    
+    },
     "properties": {
         "debug": {
             "$id": "#/properties/debug",
@@ -355,6 +355,33 @@
                             "clock",
                             "standings",
                             "scoreticker"
+                        ],
+                        "$ref": "#/definitions/boards_list"
+                    }
+                },
+                "live": {
+                    "$id": "#/properties/states/properties/live",
+                    "type": "array",
+                    "title": "live",
+                    "description": "Boards to rotate through during live game (non-intermission)",
+                    "default": [],
+                    "examples": [
+                        [
+                            "live_scoreboard",
+                            "game_stats",
+                            "scoreticker"
+                        ]
+                    ],
+                    "additionalItems": true,
+                    "items": {
+                        "$id": "#/properties/states/properties/live/items",
+                        "type": "string",
+                        "title": "boards",
+                        "description": "Boards to display during live game",
+                        "default": "",
+                        "examples": [
+                            "live_scoreboard",
+                            "game_stats"
                         ],
                         "$ref": "#/definitions/boards_list"
                     }
@@ -1058,7 +1085,7 @@
                                 "192.168.100.3"
                             ]
                         },
-                        
+
                         "pin": {
                             "$id": "#/properties/sbio/properties/mqtt/properties/port",
                             "type": "integer",

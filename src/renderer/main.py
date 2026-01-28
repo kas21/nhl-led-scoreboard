@@ -40,6 +40,7 @@ class MainRenderer:
         config_board_lists = [
             self.data.config.boards_off_day,
             self.data.config.boards_scheduled,
+            self.data.config.boards_live if hasattr(self.data.config, 'boards_live') else [],
             self.data.config.boards_intermission,
             self.data.config.boards_post_game,
         ]
@@ -193,11 +194,9 @@ class MainRenderer:
                         qItem = ["{0}/live/status".format(self.data.config.mqtt_main_topic),qPayload]
                         self.sbQueue.put_nowait(qItem)
 
-                    sbrenderer = ScoreboardRenderer(self.data, self.matrix, self.scoreboard)
-
                     self.check_new_penalty()
                     self.check_new_goals()
-                    self.__render_live(sbrenderer)
+
                     if self.scoreboard.intermission:
                         debug.info("Main event is in Intermission")
 
@@ -209,7 +208,18 @@ class MainRenderer:
                         self.check_new_goals()
                         self.boards._intermission(self.data, self.matrix,self.sleepEvent)
                     else:
-                        self.sleepEvent.wait(self.refresh_rate)
+                        # Check if live state boards are configured
+                        if hasattr(self.data.config, 'boards_live') and self.data.config.boards_live:
+                            # Rotate through configured live boards
+                            debug.info("Rotating through live game boards")
+
+                            self.boards._live(self.data, self.matrix, self.sleepEvent)
+                        else:
+                            # Fallback to original behavior if no live boards configured
+                            # Only create renderer when we need it
+                            sbrenderer = ScoreboardRenderer(self.data, self.matrix, self.scoreboard)
+                            self.__render_live(sbrenderer)
+                            self.sleepEvent.wait(self.refresh_rate)
 
                 elif self.scoreboard.is_game_over:
                     debug.info("Game Over")

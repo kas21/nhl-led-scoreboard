@@ -1,0 +1,20 @@
+{
+  "name": "live_scoreboard",
+  "version": "1.0.0",
+  "description": "Live Game Scoreboard Display",
+  "author": "NHL LED Scoreboard",
+  "enabled": true,
+
+  "boards": [
+    {
+      "id": "live_scoreboard",
+      "class_name": "LiveScoreboardBoard",
+      "module": "live_scoreboard",
+      "description": "Displays the live game scoreboard with SOG alternation"
+    }
+  ],
+
+  "requirements": {
+    "app_version": ">=2025.01.01"
+  }
+}

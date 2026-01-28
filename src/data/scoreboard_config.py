@@ -141,6 +141,7 @@ class ScoreboardConfig:
         # States
         self.boards_off_day = json["states"]["off_day"]
         self.boards_scheduled = json["states"]["scheduled"]
+        self.boards_live = json["states"].get("live", [])  # Optional for backward compatibility
         self.boards_intermission = json["states"]["intermission"]
         self.boards_post_game = json["states"]["post_game"]
 

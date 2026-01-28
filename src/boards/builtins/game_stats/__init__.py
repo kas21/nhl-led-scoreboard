@@ -1,6 +1,6 @@
 """
 Intermission Stats board module for displaying game comparison statistics.
 """
-from .board import IntermissionStatsBoard
+from .game_stats import GameStatsBoard
 
-__all__ = ['IntermissionStatsBoard']
+__all__ = ['GameStatsBoard']

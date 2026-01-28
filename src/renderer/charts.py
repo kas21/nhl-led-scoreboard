@@ -317,6 +317,55 @@ class ChartRenderer:
 
         return {"position": position, "size": (ratio_x + 20, block_height)}
 
+    def _draw_split_bar_labels(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        title: Optional[str],
+        left_label: Optional[str],
+        right_label: Optional[str],
+        font: ImageFont.FreeTypeFont,
+        title_color: Optional[Color],
+        left_label_color: Optional[Color],
+        right_label_color: Optional[Color],
+        left_color: Color,
+        right_color: Color
+    ) -> int:
+        """
+        Draw the label row for a split bar and return the row height.
+
+        Renders as: LEFT_LABEL  TITLE  RIGHT_LABEL
+        Left label is left-aligned, right label is right-aligned,
+        title is centered within the width.
+
+        Returns:
+            Height of the label row in pixels.
+        """
+        sample_text = title or left_label or right_label
+        if not sample_text:
+            return 0
+
+        if left_label:
+            color = left_label_color or left_color
+            self.drawer.draw_text((x, y), left_label, font, fill=color)
+
+        if right_label:
+            color = right_label_color or right_color
+            bbox = font.getbbox(right_label)
+            text_width = bbox[2] - bbox[0]
+            self.drawer.draw_text((x + width - text_width, y), right_label, font, fill=color)
+
+        if title:
+            color = title_color or (255, 255, 255)
+            bbox = font.getbbox(title)
+            text_width = bbox[2] - bbox[0]
+            title_x = x + (width - text_width) // 2
+            self.drawer.draw_text((title_x, y), title, font, fill=color)
+
+        bbox = font.getbbox(sample_text)
+        return bbox[3] - bbox[1]
+
     def draw_split_bar(
         self,
         position: Position,
@@ -325,13 +374,25 @@ class ChartRenderer:
         height: int = 6,
         left_color: Color = (255, 255, 255),
         right_color: Color = (150, 150, 150),
-        divider_color: Optional[Color] = (80, 80, 80),
-        divider_width: int = 1
+        divider_color: Optional[Color] = (255, 255, 255),
+        divider_width: int = 1,
+        title: Optional[str] = None,
+        left_label: Optional[str] = None,
+        right_label: Optional[str] = None,
+        font: Optional[ImageFont.FreeTypeFont] = None,
+        title_color: Optional[Color] = None,
+        left_label_color: Optional[Color] = None,
+        right_label_color: Optional[Color] = None,
+        label_spacing: int = 2
     ) -> dict:
         """
         Draw a horizontal bar split into two portions by percentage.
 
-        Example: ███████│█████ (showing 60/40 split)
+        Example without labels: ███████│█████ (showing 60/40 split)
+
+        Example with labels:
+            LABEL_A    TITLE    LABEL_B
+            ███████████│████████████████
 
         Args:
             position: (x, y) top-left corner
@@ -342,11 +403,31 @@ class ChartRenderer:
             right_color: RGB tuple for right portion
             divider_color: Optional RGB for center divider line
             divider_width: Width of center divider
+            title: Optional centered title text above the bar
+            left_label: Optional left-aligned label above the bar
+            right_label: Optional right-aligned label above the bar
+            font: PIL ImageFont for labels (required if any label is provided)
+            title_color: Optional RGB for title (defaults to white)
+            left_label_color: Optional RGB for left label (defaults to left_color)
+            right_label_color: Optional RGB for right label (defaults to right_color)
+            label_spacing: Vertical pixels between label row and bar
 
         Returns:
             Dict with position and size info
         """
         x, y = position
+        total_height = height
+
+        # Draw labels above the bar if provided
+        has_labels = font and any([title, left_label, right_label])
+        if has_labels:
+            label_height = self._draw_split_bar_labels(
+                x, y, width, title, left_label, right_label, font,
+                title_color, left_label_color, right_label_color,
+                left_color, right_color
+            )
+            y += label_height + label_spacing
+            total_height += label_height + label_spacing
 
         # Clamp percentage
         left_pct = max(0, min(100, left_pct))
@@ -375,7 +456,7 @@ class ChartRenderer:
                 fill=right_color
             )
 
-        return {"position": position, "size": (width, height)}
+        return {"position": position, "size": (width, total_height)}
 
     def draw_faceoff_stat(
         self,
@@ -787,15 +868,28 @@ class ChartRenderer:
         height: int = 6,
         left_color: Color = (255, 255, 255),
         right_color: Color = (150, 150, 150),
-        divider_color: Optional[Color] = (80, 80, 80),
+        divider_color: Optional[Color] = (255, 255, 255),
         divider_width: int = 1,
         duration: float = 0.5,
         frames: int = 15,
         easing: Callable[[float], float] = ease_out_quad,
-        pre_draw: Optional[Callable[[], None]] = None
+        pre_draw: Optional[Callable[[], None]] = None,
+        title: Optional[str] = None,
+        left_label: Optional[str] = None,
+        right_label: Optional[str] = None,
+        font: Optional[ImageFont.FreeTypeFont] = None,
+        title_color: Optional[Color] = None,
+        left_label_color: Optional[Color] = None,
+        right_label_color: Optional[Color] = None,
+        label_spacing: int = 2,
+        animation: str = "slide"
     ) -> dict:
         """
-        Animate a split bar from 50/50 to the target percentage.
+        Animate a split bar to the target percentage.
+
+        Animation styles:
+            "slide": Bar starts at 50/50 and the divider slides to the target.
+            "fill":  Both sides grow inward from the outside edges simultaneously.
 
         Args:
             position: (x, y) top-left corner
@@ -813,6 +907,15 @@ class ChartRenderer:
             frames: Number of animation frames
             easing: Easing function
             pre_draw: Optional callback to draw other elements
+            title: Optional centered title text above the bar
+            left_label: Optional left-aligned label above the bar
+            right_label: Optional right-aligned label above the bar
+            font: PIL ImageFont for labels (required if any label is provided)
+            title_color: Optional RGB for title (defaults to white)
+            left_label_color: Optional RGB for left label (defaults to left_color)
+            right_label_color: Optional RGB for right label (defaults to right_color)
+            label_spacing: Vertical pixels between label row and bar
+            animation: Animation style - "slide" or "fill"
 
         Returns:
             Dict with final bar info
@@ -823,30 +926,93 @@ class ChartRenderer:
         # Clamp target percentage
         target_pct = max(0, min(100, left_pct))
 
-        # Animate from 50% to target
+        # Calculate label offset for bar positioning
+        has_labels = font and any([title, left_label, right_label])
+        if has_labels:
+            sample_text = title or left_label or right_label
+            bbox = font.getbbox(sample_text)
+            label_height = bbox[3] - bbox[1]
+            bar_y_offset = label_height + label_spacing
+        else:
+            bar_y_offset = 0
+
+        # Pre-calculate final split widths for fill animation
+        final_left_width = int((target_pct / 100) * width)
+        final_right_width = width - final_left_width - divider_width
+
         for frame in range(frames + 1):
             progress = easing(frame / frames)
-            current_pct = 50 + (target_pct - 50) * progress
 
             clear_callback()
             if pre_draw:
                 pre_draw()
 
-            self.draw_split_bar(
-                (x, y), current_pct,
-                width=width, height=height,
-                left_color=left_color, right_color=right_color,
-                divider_color=divider_color, divider_width=divider_width
-            )
+            # Draw labels (static) above the animating bar
+            if has_labels:
+                self._draw_split_bar_labels(
+                    x, y, width, title, left_label, right_label, font,
+                    title_color, left_label_color, right_label_color,
+                    left_color, right_color
+                )
+
+            bar_y = y + bar_y_offset
+
+            if animation == "fill":
+                # Both bars grow inward from outside edges
+                left_current = int(final_left_width * progress)
+                right_current = int(final_right_width * progress)
+
+                if left_current > 0:
+                    self.drawer.draw_rectangle(
+                        (x, bar_y), (left_current, height), fill=left_color
+                    )
+                if right_current > 0:
+                    right_x = x + width - right_current
+                    self.drawer.draw_rectangle(
+                        (right_x, bar_y), (right_current, height), fill=right_color
+                    )
+                # Draw divider once both bars have reached it
+                if divider_color and divider_width > 0:
+                    if left_current >= final_left_width and right_current >= final_right_width:
+                        self.drawer.draw_rectangle(
+                            (x + final_left_width, bar_y),
+                            (divider_width, height), fill=divider_color
+                        )
+            else:
+                # "slide" - animate from 50/50 to target
+                current_pct = 50 + (target_pct - 50) * progress
+                current_pct_clamped = max(0, min(100, current_pct))
+                left_width = int((current_pct_clamped / 100) * width)
+                right_width = width - left_width - divider_width
+
+                if left_width > 0:
+                    self.drawer.draw_rectangle(
+                        (x, bar_y), (left_width, height), fill=left_color
+                    )
+                if divider_color and divider_width > 0:
+                    self.drawer.draw_rectangle(
+                        (x + left_width, bar_y),
+                        (divider_width, height), fill=divider_color
+                    )
+                if right_width > 0:
+                    right_x = x + left_width + divider_width
+                    self.drawer.draw_rectangle(
+                        (right_x, bar_y), (right_width, height), fill=right_color
+                    )
 
             render_callback()
             sleep_func(frame_delay)
 
+        # Final frame with exact values via draw_split_bar (includes labels)
         return self.draw_split_bar(
             (x, y), target_pct,
             width=width, height=height,
             left_color=left_color, right_color=right_color,
-            divider_color=divider_color, divider_width=divider_width
+            divider_color=divider_color, divider_width=divider_width,
+            title=title, left_label=left_label, right_label=right_label,
+            font=font, title_color=title_color,
+            left_label_color=left_label_color, right_label_color=right_label_color,
+            label_spacing=label_spacing
         )
 
     def animate_ratio_blocks(

@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """
-Test script for GameStatsBoard with mock data.
+Test script for GameStatsBoard with mock or live NHL data.
 
-Run with:
+Run with mock data:
     uv run tests/test_game_stats.py --emulated --led-rows=64 --led-cols=128
-    uv run tests/test_game_stats.py --emulated --led-rows=32 --led-cols=64
+
+Run with live data (game ID):
+    uv run tests/test_game_stats.py --emulated --led-rows=64 --led-cols=128 --game-id 2024020456
+
+Run with live data (team + date):
+    uv run tests/test_game_stats.py --emulated --led-rows=64 --led-cols=128 --team BOS --date 2025-01-15
 """
 
 import sys
@@ -83,6 +88,15 @@ def parse_args():
     parser.add_argument("--loglevel", action="store", help="Log level (DEBUG, INFO, WARN, ERROR, CRITICAL)",
                         default="INFO", type=str)
 
+    # Live data options
+    parser.add_argument("--game-id", action="store", help="NHL game ID to fetch live stats for",
+                        default=None, type=int)
+    parser.add_argument("--team", action="store", help="Team abbreviation to find a game for (use with --date)",
+                        default=None, type=str)
+    parser.add_argument("--date", action="store",
+                        help="Date to look up games (YYYY-MM-DD format, default: today). Use with --team.",
+                        default=None, type=str)
+
     return parser.parse_args()
 
 
@@ -116,7 +130,80 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "boards" / "builti
 from game_stats import GameStatsBoard
 from nhl_api.models import GameStoryStats, TeamGameStats
 from nhl_api.workers.game_story_worker import GameStoryWorker
+from nhl_api.client import NHLAPIClient
 from utils import led_matrix_options
+
+
+def fetch_live_stats(game_id):
+    """Fetch live GameStoryStats from the NHL API by game ID."""
+    logger.info(f"Fetching live stats for game {game_id}...")
+    client = NHLAPIClient()
+    try:
+        raw_data = client.get_game_story(game_id)
+        stats = GameStoryStats.from_dict(raw_data)
+        logger.info(
+            f"Live stats: {stats.away_team_abbrev} @ {stats.home_team_abbrev} "
+            f"(state={stats.game_state}, period={stats.period})"
+        )
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to fetch live stats for game {game_id}: {e}")
+        return None
+    finally:
+        client.close()
+
+
+def find_game_id_for_team(team_abbrev, date_str=None):
+    """
+    Find a game ID for a team on a given date.
+
+    Args:
+        team_abbrev: Three-letter team code (e.g. 'BOS')
+        date_str: Date string in YYYY-MM-DD format. Defaults to today.
+
+    Returns:
+        Game ID (int) or None if no game found.
+    """
+    from datetime import date as date_type
+
+    if date_str is None:
+        lookup_date = date_type.today().isoformat()
+    else:
+        lookup_date = date_str
+
+    logger.info(f"Looking up games for {team_abbrev} on {lookup_date}...")
+    client = NHLAPIClient()
+    try:
+        data = client.get_score_details(lookup_date)
+        games = data.get('games', [])
+        logger.info(f"Found {len(games)} game(s) on {lookup_date}")
+
+        team_upper = team_abbrev.upper()
+        for game in games:
+            home_abbrev = game.get('homeTeam', {}).get('abbrev', '')
+            away_abbrev = game.get('awayTeam', {}).get('abbrev', '')
+            game_id = game.get('id')
+            logger.debug(f"  Game {game_id}: {away_abbrev} @ {home_abbrev}")
+
+            if home_abbrev == team_upper or away_abbrev == team_upper:
+                logger.info(f"Found game: {away_abbrev} @ {home_abbrev} (ID: {game_id})")
+                return game_id
+
+        logger.warning(f"No game found for {team_upper} on {lookup_date}")
+        # List available games to help the user
+        if games:
+            available = [
+                f"{g.get('awayTeam', {}).get('abbrev', '?')} @ "
+                f"{g.get('homeTeam', {}).get('abbrev', '?')}"
+                for g in games
+            ]
+            logger.info(f"Available games on {lookup_date}: {', '.join(available)}")
+        return None
+    except Exception as e:
+        logger.error(f"Failed to look up games: {e}")
+        return None
+    finally:
+        client.close()
 
 
 # Mock game story data - realistic NHL stats
@@ -141,7 +228,7 @@ def create_mock_game_stats(home_team="BOS", away_team="TOR"):
         away_team_id=team_ids.get(away_team, 10),
         home_stats=TeamGameStats(
             shots=28,
-            hits=22,
+            hits=12,
             blocked_shots=14,
             giveaways=7,
             takeaways=9,
@@ -152,7 +239,7 @@ def create_mock_game_stats(home_team="BOS", away_team="TOR"):
             power_play_pct=25.0
         ),
         away_stats=TeamGameStats(
-            shots=24,
+            shots=21,
             hits=19,
             blocked_shots=11,
             giveaways=5,
@@ -179,15 +266,40 @@ def create_mock_data_object(home_team="BOS", away_team="TOR"):
     # Mock team colors
     team_colors = SimpleNamespace()
 
-    # Team color mapping (RGB tuples)
+    # Team color mapping keyed by team ID (as string, since _get_team_color
+    # looks up "{team_id}.primary")
     color_map = {
-        "BOS": {"primary": (252, 181, 20), "text": (0, 0, 0)},  # Gold/Black
-        "TOR": {"primary": (0, 32, 91), "text": (255, 255, 255)},  # Blue/White
-        "MTL": {"primary": (175, 30, 45), "text": (255, 255, 255)},  # Red/White
-        "COL": {"primary": (111, 38, 61), "text": (255, 255, 255)},  # Burgundy/White
-        "EDM": {"primary": (4, 30, 66), "text": (252, 76, 2)},  # Navy/Orange
-        "NYR": {"primary": (0, 51, 160), "text": (255, 255, 255)},  # Blue/White
-        "VGK": {"primary": (185, 151, 91), "text": (51, 63, 72)},  # Gold/Grey
+        "6":  {"primary": (252, 181, 20), "text": (0, 0, 0)},       # BOS - Gold/Black
+        "10": {"primary": (0, 32, 91), "text": (255, 255, 255)},    # TOR - Blue/White
+        "8":  {"primary": (175, 30, 45), "text": (255, 255, 255)},  # MTL - Red/White
+        "3":  {"primary": (0, 51, 160), "text": (255, 255, 255)},   # NYR - Blue/White
+        "4":  {"primary": (247, 73, 2), "text": (0, 0, 0)},         # PHI - Orange/Black
+        "5":  {"primary": (252, 181, 20), "text": (0, 0, 0)},       # PIT - Gold/Black
+        "21": {"primary": (111, 38, 61), "text": (255, 255, 255)},  # COL - Burgundy/White
+        "22": {"primary": (4, 30, 66), "text": (252, 76, 2)},       # EDM - Navy/Orange
+        "20": {"primary": (210, 0, 28), "text": (255, 255, 255)},   # CGY - Red/White
+        "23": {"primary": (0, 32, 91), "text": (255, 255, 255)},    # VAN - Blue/White
+        "55": {"primary": (0, 22, 40), "text": (153, 217, 217)},    # SEA - Navy/Ice
+        "26": {"primary": (17, 17, 17), "text": (162, 170, 173)},   # LAK - Black/Silver
+        "24": {"primary": (252, 76, 2), "text": (0, 0, 0)},         # ANA - Orange/Black
+        "28": {"primary": (0, 109, 117), "text": (255, 255, 255)},  # SJS - Teal/White
+        "54": {"primary": (185, 151, 91), "text": (51, 63, 72)},    # VGK - Gold/Grey
+        "25": {"primary": (0, 104, 71), "text": (255, 255, 255)},   # DAL - Green/White
+        "30": {"primary": (2, 73, 48), "text": (255, 255, 255)},    # MIN - Green/White
+        "52": {"primary": (4, 30, 66), "text": (255, 255, 255)},    # WPG - Navy/White
+        "18": {"primary": (255, 182, 18), "text": (0, 0, 0)},       # NSH - Gold/Black
+        "19": {"primary": (0, 47, 135), "text": (255, 255, 255)},   # STL - Blue/White
+        "16": {"primary": (207, 10, 44), "text": (255, 255, 255)},  # CHI - Red/White
+        "17": {"primary": (206, 17, 38), "text": (255, 255, 255)},  # DET - Red/White
+        "14": {"primary": (0, 40, 104), "text": (255, 255, 255)},   # TBL - Blue/White
+        "13": {"primary": (185, 29, 71), "text": (255, 255, 255)},  # FLA - Red/White
+        "12": {"primary": (206, 17, 38), "text": (255, 255, 255)},  # CAR - Red/White
+        "2":  {"primary": (0, 51, 160), "text": (255, 255, 255)},   # NYI - Blue/White
+        "1":  {"primary": (206, 17, 38), "text": (255, 255, 255)},  # NJD - Red/White
+        "15": {"primary": (200, 16, 46), "text": (255, 255, 255)},  # WSH - Red/White
+        "29": {"primary": (0, 38, 84), "text": (255, 255, 255)},    # CBJ - Navy/White
+        "9":  {"primary": (200, 16, 46), "text": (255, 255, 255)},  # OTT - Red/White
+        "7":  {"primary": (0, 38, 84), "text": (255, 255, 255)},    # BUF - Navy/White
     }
 
     def color_func(key):
@@ -234,21 +346,32 @@ def create_mock_data_object(home_team="BOS", away_team="TOR"):
 class GameStatsTest:
     """Test runner for GameStatsBoard."""
 
-    def __init__(self, matrix, delay=5, loop=False, home_team="BOS", away_team="TOR"):
+    def __init__(self, matrix, delay=5, loop=False, home_team="BOS", away_team="TOR",
+                 live_stats=None):
         self.matrix = matrix
         self.delay = delay
         self.loop = loop
         self.sleepEvent = Event()
-        self.home_team = home_team
-        self.away_team = away_team
+        self.live_mode = live_stats is not None
 
-        # Create mock data
-        self.data = create_mock_data_object(home_team, away_team)
-        self.mock_stats = create_mock_game_stats(home_team, away_team)
+        if live_stats:
+            # Use live data from the NHL API
+            self.home_team = live_stats.home_team_abbrev
+            self.away_team = live_stats.away_team_abbrev
+            self.stats = live_stats
+            self.data = create_mock_data_object(self.home_team, self.away_team)
+            self.data.current_game_id = live_stats.game_id
+        else:
+            # Use mock data
+            self.home_team = home_team
+            self.away_team = away_team
+            self.stats = create_mock_game_stats(home_team, away_team)
+            self.data = create_mock_data_object(home_team, away_team)
 
-        logger.info(f"Testing game stats: {away_team} @ {home_team}")
-        logger.info(f"Mock stats: {away_team} {self.mock_stats.away_stats.shots} SOG, "
-                   f"{home_team} {self.mock_stats.home_stats.shots} SOG")
+        source = "Live" if self.live_mode else "Mock"
+        logger.info(f"Testing game stats ({source}): {self.away_team} @ {self.home_team}")
+        logger.info(f"Stats: {self.away_team} {self.stats.away_stats.shots} SOG, "
+                   f"{self.home_team} {self.stats.home_stats.shots} SOG")
 
     def run(self):
         """Run the test display."""
@@ -256,8 +379,8 @@ class GameStatsTest:
         self.sleepEvent.wait(0.5)
 
         try:
-            # Patch GameStoryWorker.get_game_stats to return our mock data
-            with patch.object(GameStoryWorker, 'get_game_stats', return_value=self.mock_stats):
+            # Patch GameStoryWorker.get_game_stats to return our stats (live or mock)
+            with patch.object(GameStoryWorker, 'get_game_stats', return_value=self.stats):
                 # Create and run the board
                 board = GameStatsBoard(self.data, self.matrix, self.sleepEvent)
 
@@ -285,7 +408,32 @@ def main():
     print("\n=== GameStatsBoard Test ===")
     print(f"Matrix size: {commandArgs.led_cols}x{commandArgs.led_rows}")
     print(f"Mode: {'Emulated' if commandArgs.emulated else 'Hardware'}")
-    print(f"Teams: {commandArgs.away_team} @ {commandArgs.home_team}")
+
+    # Resolve live stats if requested
+    live_stats = None
+    game_id = commandArgs.game_id
+
+    if commandArgs.team and not game_id:
+        # Look up game ID by team + date
+        game_id = find_game_id_for_team(commandArgs.team, commandArgs.date)
+        if not game_id:
+            print(f"ERROR: No game found for {commandArgs.team}"
+                  f"{' on ' + commandArgs.date if commandArgs.date else ' today'}. "
+                  f"Falling back to mock data.")
+
+    if game_id:
+        live_stats = fetch_live_stats(game_id)
+        if not live_stats:
+            print(f"ERROR: Could not fetch stats for game {game_id}. Falling back to mock data.")
+
+    if live_stats:
+        print(f"Data: LIVE (game {live_stats.game_id})")
+        print(f"Teams: {live_stats.away_team_abbrev} @ {live_stats.home_team_abbrev}")
+        print(f"State: {live_stats.game_state}, Period: {live_stats.period}")
+    else:
+        print("Data: Mock")
+        print(f"Teams: {commandArgs.away_team} @ {commandArgs.home_team}")
+
     print(f"Stat filter: {commandArgs.stat or 'All'}")
     print(f"Animation: {'Disabled' if commandArgs.no_animation else 'Enabled'}")
     print(f"Loop: {'Yes' if commandArgs.loop else 'No'}\n")
@@ -300,7 +448,8 @@ def main():
         delay=commandArgs.delay,
         loop=commandArgs.loop,
         home_team=commandArgs.home_team,
-        away_team=commandArgs.away_team
+        away_team=commandArgs.away_team,
+        live_stats=live_stats
     )
     test.run()
 

@@ -789,6 +789,7 @@ class GameStoryStats:
     away_stats: TeamGameStats
     game_state: str
     period: int
+    clock: str
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'GameStoryStats':
@@ -828,5 +829,6 @@ class GameStoryStats:
             home_stats=TeamGameStats.from_stats_list(team_stats, is_home=True),
             away_stats=TeamGameStats.from_stats_list(team_stats, is_home=False),
             game_state=data.get('gameState', ''),
-            period=data.get('periodDescriptor', {}).get('number', 0)
+            period=data.get('periodDescriptor', {}).get('number', 0),
+            clock=data.get('clock', {}).get('timeRemaining', '')
         )

@@ -437,12 +437,14 @@ class GameStatsBoard(BoardBase):
             label_width = 30
             block_width = 6
             block_height = 6
+            block_spacing = 2
             font = self.font
         else:
             bar_width = 50
             label_width = 24
             block_width = 4
             block_height = 5
+            block_spacing = 1
             font = self.font
 
         bar_x = (self.display_width - bar_width) // 2
@@ -452,15 +454,31 @@ class GameStatsBoard(BoardBase):
             stats, home_color, away_color, bar_x, bar_width
         )
 
+        # Calculate total width of power play stat row for centering
+        # Width = label_width + blocks (max_attempts * (block_width + spacing) - spacing)
+        max_attempts = max(
+            home_pp.power_play_opportunities,
+            away_pp.power_play_opportunities,
+            5  # minimum blocks to show
+        )
+        blocks_width = max_attempts * (block_width + block_spacing) - block_spacing
+        total_row_width = label_width + blocks_width
+
+        # Center content horizontally
+        content_x = (self.display_width - total_row_width) // 2
+
         # Position content below header
-        content_x = 2
         y_title = header_height + (2 if self.display_width >= 128 else 1)
         y_home = y_title + (14 if self.display_width >= 128 else 8)
         y_away = y_home + (14 if self.display_width >= 128 else 10)
 
-        # Draw title
+        # Draw title (centered)
+        title_text = "POWER PLAY"
+        title_bbox = font.getbbox(title_text)
+        title_width = title_bbox[2] - title_bbox[0]
+        title_x = (self.display_width - title_width) // 2
         self.matrix.draw_text(
-            (content_x, y_title), "POWER PLAY", font, fill=(255, 255, 255)
+            (title_x, y_title), title_text, font, fill=(255, 255, 255)
         )
 
         # Draw home PP (use team abbreviation as label)

@@ -47,6 +47,41 @@ def linear(t: float) -> float:
     return t
 
 
+# Color utility functions for contrast handling
+def get_luminance(color: Color) -> float:
+    """
+    Calculate relative luminance (0-1) using standard formula.
+
+    Uses ITU-R BT.601 coefficients for perceptual brightness.
+    """
+    r, g, b = color
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255
+
+
+def is_dark_color(color: Color, threshold: float = 0.3) -> bool:
+    """Return True if color is too dark for visibility on black background."""
+    return get_luminance(color) < threshold
+
+
+def lighten_color(color: Color, factor: float = 0.5) -> Color:
+    """
+    Create a lighter version of a color for outlines.
+
+    Args:
+        color: RGB tuple to lighten
+        factor: How much to lighten (0=no change, 1=white)
+
+    Returns:
+        Lightened RGB tuple
+    """
+    r, g, b = color
+    return (
+        min(255, int(r + (255 - r) * factor)),
+        min(255, int(g + (255 - g) * factor)),
+        min(255, int(b + (255 - b) * factor))
+    )
+
+
 class ChartRenderer:
     """
     Utility class for drawing charts and stat visualizations on LED matrices.
@@ -269,7 +304,8 @@ class ChartRenderer:
         label_width: int = 25,
         filled_color: Color = (200, 200, 200),
         empty_color: Color = (60, 60, 60),
-        text_color: Color = (255, 255, 255)
+        text_color: Color = (255, 255, 255),
+        outline_color: Optional[Color] = None
     ) -> dict:
         """
         Draw a power play statistic with label, blocks, and ratio.
@@ -289,6 +325,7 @@ class ChartRenderer:
             filled_color: RGB for successful blocks
             empty_color: RGB for empty blocks
             text_color: RGB for label and ratio text
+            outline_color: Optional RGB outline for blocks (for dark color visibility)
 
         Returns:
             Dict with position and size info
@@ -307,7 +344,8 @@ class ChartRenderer:
             block_height=block_height,
             spacing=spacing,
             filled_color=filled_color,
-            empty_color=empty_color
+            empty_color=empty_color,
+            outline_color=outline_color
         )
 
         # Draw ratio text
@@ -383,7 +421,9 @@ class ChartRenderer:
         title_color: Optional[Color] = None,
         left_label_color: Optional[Color] = None,
         right_label_color: Optional[Color] = None,
-        label_spacing: int = 2
+        label_spacing: int = 2,
+        left_outline_color: Optional[Color] = None,
+        right_outline_color: Optional[Color] = None
     ) -> dict:
         """
         Draw a horizontal bar split into two portions by percentage.
@@ -411,6 +451,8 @@ class ChartRenderer:
             left_label_color: Optional RGB for left label (defaults to left_color)
             right_label_color: Optional RGB for right label (defaults to right_color)
             label_spacing: Vertical pixels between label row and bar
+            left_outline_color: Optional RGB outline for left portion (for dark color visibility)
+            right_outline_color: Optional RGB outline for right portion (for dark color visibility)
 
         Returns:
             Dict with position and size info
@@ -438,7 +480,10 @@ class ChartRenderer:
 
         # Draw left portion
         if left_width > 0:
-            self.drawer.draw_rectangle((x, y), (left_width, height), fill=left_color)
+            self.drawer.draw_rectangle(
+                (x, y), (left_width, height),
+                fill=left_color, outline=left_outline_color
+            )
 
         # Draw divider
         if divider_color and divider_width > 0:
@@ -453,7 +498,7 @@ class ChartRenderer:
             self.drawer.draw_rectangle(
                 (x + left_width + divider_width, y),
                 (right_width, height),
-                fill=right_color
+                fill=right_color, outline=right_outline_color
             )
 
         return {"position": position, "size": (width, total_height)}
@@ -882,7 +927,9 @@ class ChartRenderer:
         left_label_color: Optional[Color] = None,
         right_label_color: Optional[Color] = None,
         label_spacing: int = 2,
-        animation: str = "slide"
+        animation: str = "slide",
+        left_outline_color: Optional[Color] = None,
+        right_outline_color: Optional[Color] = None
     ) -> dict:
         """
         Animate a split bar to the target percentage.
@@ -916,6 +963,8 @@ class ChartRenderer:
             right_label_color: Optional RGB for right label (defaults to right_color)
             label_spacing: Vertical pixels between label row and bar
             animation: Animation style - "slide" or "fill"
+            left_outline_color: Optional RGB outline for left portion (for dark color visibility)
+            right_outline_color: Optional RGB outline for right portion (for dark color visibility)
 
         Returns:
             Dict with final bar info
@@ -964,12 +1013,14 @@ class ChartRenderer:
 
                 if left_current > 0:
                     self.drawer.draw_rectangle(
-                        (x, bar_y), (left_current, height), fill=left_color
+                        (x, bar_y), (left_current, height),
+                        fill=left_color, outline=left_outline_color
                     )
                 if right_current > 0:
                     right_x = x + width - right_current
                     self.drawer.draw_rectangle(
-                        (right_x, bar_y), (right_current, height), fill=right_color
+                        (right_x, bar_y), (right_current, height),
+                        fill=right_color, outline=right_outline_color
                     )
                 # Draw divider once both bars have reached it
                 if divider_color and divider_width > 0:
@@ -987,7 +1038,8 @@ class ChartRenderer:
 
                 if left_width > 0:
                     self.drawer.draw_rectangle(
-                        (x, bar_y), (left_width, height), fill=left_color
+                        (x, bar_y), (left_width, height),
+                        fill=left_color, outline=left_outline_color
                     )
                 if divider_color and divider_width > 0:
                     self.drawer.draw_rectangle(
@@ -997,7 +1049,8 @@ class ChartRenderer:
                 if right_width > 0:
                     right_x = x + left_width + divider_width
                     self.drawer.draw_rectangle(
-                        (right_x, bar_y), (right_width, height), fill=right_color
+                        (right_x, bar_y), (right_width, height),
+                        fill=right_color, outline=right_outline_color
                     )
 
             render_callback()
@@ -1012,7 +1065,8 @@ class ChartRenderer:
             title=title, left_label=left_label, right_label=right_label,
             font=font, title_color=title_color,
             left_label_color=left_label_color, right_label_color=right_label_color,
-            label_spacing=label_spacing
+            label_spacing=label_spacing,
+            left_outline_color=left_outline_color, right_outline_color=right_outline_color
         )
 
     def animate_ratio_blocks(

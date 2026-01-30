@@ -14,7 +14,7 @@ from typing import Optional, Tuple
 from boards.base_board import BoardBase
 from nhl_api.models import GameStoryStats
 from nhl_api.workers import GameStoryWorker
-from renderer.charts import ChartRenderer
+from renderer.charts import ChartRenderer, is_dark_color, lighten_color
 
 debug = logging.getLogger("scoreboard")
 
@@ -148,6 +148,12 @@ class GameStatsBoard(BoardBase):
         total = home_val + away_val
         left_pct = (home_val / total * 100) if total > 0 else 50
 
+        # Get outline and text colors for dark teams
+        home_outline = self._get_outline_for_color(home_color)
+        away_outline = self._get_outline_for_color(away_color)
+        home_text = self._get_readable_text_color(home_color)
+        away_text = self._get_readable_text_color(away_color)
+
         # Adjust layout based on display size
         if self.display_width >= 128:
             bar_width = 100
@@ -195,10 +201,12 @@ class GameStatsBoard(BoardBase):
                 left_label=str(home_val),
                 right_label=str(away_val),
                 font=font,
-                left_label_color=home_color,
-                right_label_color=away_color,
+                left_label_color=home_text,
+                right_label_color=away_text,
                 animation="fill",
-                pre_draw=draw_header
+                pre_draw=draw_header,
+                left_outline_color=home_outline,
+                right_outline_color=away_outline
             )
         else:
             self.chart.draw_split_bar(
@@ -212,8 +220,10 @@ class GameStatsBoard(BoardBase):
                 left_label=str(home_val),
                 right_label=str(away_val),
                 font=font,
-                left_label_color=home_color,
-                right_label_color=away_color
+                left_label_color=home_text,
+                right_label_color=away_text,
+                left_outline_color=home_outline,
+                right_outline_color=away_outline
             )
 
     def _render_faceoff_stat(
@@ -225,6 +235,12 @@ class GameStatsBoard(BoardBase):
         """Render faceoff percentage split bar with team header."""
         home_pct = stats.home_stats.faceoff_pct
         away_pct = 100 - home_pct
+
+        # Get outline and text colors for dark teams
+        home_outline = self._get_outline_for_color(home_color)
+        away_outline = self._get_outline_for_color(away_color)
+        home_text = self._get_readable_text_color(home_color)
+        away_text = self._get_readable_text_color(away_color)
 
         # Adjust layout based on display size
         if self.display_width >= 128:
@@ -274,10 +290,12 @@ class GameStatsBoard(BoardBase):
                 left_label=home_label,
                 right_label=away_label,
                 font=font,
-                left_label_color=home_color,
-                right_label_color=away_color,
+                left_label_color=home_text,
+                right_label_color=away_text,
                 animation="fill",
-                pre_draw=draw_header
+                pre_draw=draw_header,
+                left_outline_color=home_outline,
+                right_outline_color=away_outline
             )
         else:
             self.chart.draw_split_bar(
@@ -291,8 +309,10 @@ class GameStatsBoard(BoardBase):
                 left_label=home_label,
                 right_label=away_label,
                 font=font,
-                left_label_color=home_color,
-                right_label_color=away_color
+                left_label_color=home_text,
+                right_label_color=away_text,
+                left_outline_color=home_outline,
+                right_outline_color=away_outline
             )
 
     def _render_combined_stats(
@@ -303,6 +323,12 @@ class GameStatsBoard(BoardBase):
     ):
         """Render shots, hits, and faceoffs on one screen with sequential animation."""
         font = self.font
+
+        # Get outline and text colors for dark teams
+        home_outline = self._get_outline_for_color(home_color)
+        away_outline = self._get_outline_for_color(away_color)
+        home_text = self._get_readable_text_color(home_color)
+        away_text = self._get_readable_text_color(away_color)
 
         # Build stat definitions: (title, left_label, right_label, left_pct)
         stat_defs = []
@@ -375,9 +401,11 @@ class GameStatsBoard(BoardBase):
                 left_label=left_label,
                 right_label=right_label,
                 font=font,
-                left_label_color=home_color,
-                right_label_color=away_color,
-                label_spacing=label_spacing
+                left_label_color=home_text,
+                right_label_color=away_text,
+                label_spacing=label_spacing,
+                left_outline_color=home_outline,
+                right_outline_color=away_outline
             )
 
         if self.animate_bars:
@@ -411,11 +439,13 @@ class GameStatsBoard(BoardBase):
                     left_label=left_label,
                     right_label=right_label,
                     font=font,
-                    left_label_color=home_color,
-                    right_label_color=away_color,
+                    left_label_color=home_text,
+                    right_label_color=away_text,
                     label_spacing=label_spacing,
                     animation="fill",
-                    pre_draw=make_pre_draw(stat_idx)
+                    pre_draw=make_pre_draw(stat_idx),
+                    left_outline_color=home_outline,
+                    right_outline_color=away_outline
                 )
         else:
             for idx in range(len(stat_defs)):
@@ -430,6 +460,12 @@ class GameStatsBoard(BoardBase):
         """Render power play statistics with ratio blocks and team header."""
         home_pp = stats.home_stats
         away_pp = stats.away_stats
+
+        # Get outline and text colors for dark teams
+        home_outline = self._get_outline_for_color(home_color)
+        away_outline = self._get_outline_for_color(away_color)
+        home_text = self._get_readable_text_color(home_color)
+        away_text = self._get_readable_text_color(away_color)
 
         # Adjust layout based on display size
         if self.display_width >= 128:
@@ -492,7 +528,8 @@ class GameStatsBoard(BoardBase):
             block_width=block_width,
             block_height=block_height,
             filled_color=home_color,
-            text_color=home_color
+            text_color=home_text,
+            outline_color=home_outline
         )
 
         # Draw away PP (use team abbreviation as label)
@@ -506,7 +543,8 @@ class GameStatsBoard(BoardBase):
             block_width=block_width,
             block_height=block_height,
             filled_color=away_color,
-            text_color=away_color
+            text_color=away_text,
+            outline_color=away_outline
         )
 
     def _get_stat_values(self, stats: GameStoryStats, category: str) -> Tuple[int, int]:
@@ -534,6 +572,18 @@ class GameStatsBoard(BoardBase):
             return (color['r'], color['g'], color['b'])
         except Exception:
             return (255, 255, 255)
+
+    def _get_outline_for_color(self, color: Tuple[int, int, int]) -> Optional[Tuple[int, int, int]]:
+        """Get outline color for dark colors, or None if not needed."""
+        if is_dark_color(color):
+            return lighten_color(color, factor=0.6)
+        return None
+
+    def _get_readable_text_color(self, color: Tuple[int, int, int]) -> Tuple[int, int, int]:
+        """Get readable text color - lightens dark colors for visibility on black background."""
+        if is_dark_color(color):
+            return lighten_color(color, factor=0.6)
+        return color
 
     def _get_game_status_text(self, stats: GameStoryStats) -> str:
         """Get display text for current game state."""

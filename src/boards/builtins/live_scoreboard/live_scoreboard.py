@@ -207,7 +207,7 @@ class LiveScoreboardBoard(BoardBase):
 
     def _draw_SOG(self, game: Game):
         """Draw the shots on goal display."""
-        SOG = f"{game.away_team.sog}-{game.home_team.sog}"
+        SOG = f"{game.sog.away}-{game.sog.home}"
 
         self.matrix.draw_text_layout(
             self.layout.SOG_label,

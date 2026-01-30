@@ -350,6 +350,21 @@ class Score:
 
 
 @dataclass
+class ShotsOnGoal:
+    """Shots on goal for both teams"""
+    home: int = 0
+    away: int = 0
+
+    @property
+    def total(self) -> int:
+        """Total shots in game"""
+        return self.home + self.away
+
+    def __str__(self) -> str:
+        return f"{self.away}-{self.home}"
+
+
+@dataclass
 class GamePeriod:
     """Period information"""
     number: int
@@ -380,6 +395,9 @@ class Game:
     # Score
     score: Score
 
+    # Shots on goal
+    sog: ShotsOnGoal
+
     # Game state
     state: GameState
     period: Optional[GamePeriod] = None
@@ -396,6 +414,11 @@ class Game:
         score = Score(
             home=data.get('homeTeam', {}).get('score', 0),
             away=data.get('awayTeam', {}).get('score', 0)
+        )
+
+        sog = ShotsOnGoal(
+            home=data.get('homeTeam', {}).get('sog', 0),
+            away=data.get('awayTeam', {}).get('sog', 0)
         )
 
         try:
@@ -427,6 +450,7 @@ class Game:
             home_team=home_team,
             away_team=away_team,
             score=score,
+            sog=sog,
             state=state,
             period=period,
             time_remaining=data.get('clock', {}).get('timeRemaining')

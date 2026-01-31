@@ -1,9 +1,9 @@
 """
 Live Scoreboard Board - Modern implementation using Game model.
 
-Displays real-time game scoreboard during live games with period, clock, score,
-and alternating shots on goal display. Handles all rendering logic directly
-using modern Game model instead of legacy Scoreboard/ScoreboardRenderer classes.
+Displays real-time game scoreboard during live games with period, clock, and score.
+Periodically shows an animated stats banner with shots, hits, and faceoff stats.
+Handles all rendering logic directly using modern Game model.
 
 This is the modern board implementation used in the 'live' state, while
 the legacy ScoreboardRenderer remains intact for fallback rendering.
@@ -27,8 +27,8 @@ class LiveScoreboardBoard(BoardBase):
     """
     Modern live scoreboard board using Game model.
 
-    Shows current game state including score, period, time, and alternates
-    showing shots on goal. Handles all rendering logic directly.
+    Shows current game state including score, period, and time. Periodically
+    displays an animated stats banner. Handles all rendering logic directly.
     """
 
     def __init__(self, data, matrix, sleepEvent):
@@ -44,11 +44,11 @@ class LiveScoreboardBoard(BoardBase):
             # Fall back to live_game_refresh_rate from main config
             self.display_duration = data.config.live_game_refresh_rate
 
-        self.show_power_play_details = self.get_config_value('show_power_play_details', True)
+        # Extended display configuration for predominant board behavior
+        self.total_display_duration = self.get_config_value('total_display_duration', 180)
+        self.refresh_interval = self.get_config_value('refresh_interval', 9)
 
-        # Track SOG display state - alternate between score/clock and SOG
-        self.alternate_counter = getattr(data, '_live_scoreboard_counter', 1)
-        self.sog_display_frequency = data.config.sog_display_frequency
+        self.show_power_play_details = self.get_config_value('show_power_play_details', True)
 
         # Logo renderers - will be initialized when we know team abbrevs
         self.home_logo_renderer = None
@@ -60,85 +60,99 @@ class LiveScoreboardBoard(BoardBase):
         self.stats_banner_stat_duration = self.get_config_value('stats_banner_stat_duration', 2.0)
         self.stats_banner_animation_duration = self.get_config_value('stats_banner_animation_duration', 0.3)
         self.stats_banner_categories = self.get_config_value('stats_banner_categories', ['shots', 'hits', 'faceoff'])
-        # Persist banner counter across board re-instantiations (same pattern as alternate_counter)
+        # Persist banner counter across board re-instantiations
         self._banner_counter = getattr(data, '_stats_banner_counter', 0)
         self._stats_banner = None  # Lazy initialized
 
+    def _init_logo_renderers(self, game: Game):
+        """Initialize logo renderers for home and away teams."""
+        self.home_logo_renderer = LogoRenderer(
+            self.matrix,
+            self.data.config,
+            self.layout.home_logo,
+            game.home_team.abbrev,
+            'scoreboard',
+            'home'
+        )
+        self.away_logo_renderer = LogoRenderer(
+            self.matrix,
+            self.data.config,
+            self.layout.away_logo,
+            game.away_team.abbrev,
+            'scoreboard',
+            'away'
+        )
+
     def render(self):
-        """Render the live scoreboard display."""
-        debug.debug("LiveScoreboardBoard: Rendering live scoreboard")
+        """Render the live scoreboard display with periodic refresh.
 
-        try:
-            game_id = getattr(self.data, 'current_game_id', None)
-            if not game_id:
-                debug.warning("LiveScoreboardBoard: No current game ID available")
-                return
+        Displays the scoreboard for total_display_duration seconds, refreshing
+        every refresh_interval seconds with fresh cached data from the worker.
+        """
+        debug.debug("LiveScoreboardBoard: Starting render cycle")
 
-            # Get cached overview from LiveGameWorker
-            cached_overview = LiveGameWorker.get_cached_overview(game_id)
-            if not cached_overview:
-                debug.warning(f"LiveScoreboardBoard: No cached overview for game {game_id}")
-                return
+        elapsed_time = 0
 
-            # Create modern Game object from cached data
-            game = Game.from_dict(cached_overview)
+        while elapsed_time < self.total_display_duration and not self.sleepEvent.is_set():
+            try:
+                game_id = getattr(self.data, 'current_game_id', None)
+                if not game_id:
+                    debug.warning("LiveScoreboardBoard: No current game ID available")
+                    return
 
-            # Initialize logo renderers if not already done
-            if not self.home_logo_renderer or not self.away_logo_renderer:
-                self.home_logo_renderer = LogoRenderer(
-                    self.matrix,
-                    self.data.config,
-                    self.layout.home_logo,
-                    game.home_team.abbrev,
-                    'scoreboard',
-                    'home'
-                )
-                self.away_logo_renderer = LogoRenderer(
-                    self.matrix,
-                    self.data.config,
-                    self.layout.away_logo,
-                    game.away_team.abbrev,
-                    'scoreboard',
-                    'away'
-                )
+                # Get fresh cached data from worker (updated every 5s)
+                cached_overview = LiveGameWorker.get_cached_overview(game_id)
+                if not cached_overview:
+                    debug.warning(f"LiveScoreboardBoard: No cached overview for game {game_id}")
+                    return
 
-            # Parse situation data (power plays, skaters) from raw overview
-            situation = self._parse_situation(cached_overview)
+                # Create Game object from cached data
+                game = Game.from_dict(cached_overview)
 
-            # Clear and render the scoreboard
-            self.matrix.clear()
-            self._draw_live(game, situation)
+                # Initialize logo renderers if needed
+                if not self.home_logo_renderer or not self.away_logo_renderer:
+                    self._init_logo_renderers(game)
 
-            # Show network/update indicators if needed
-            if self.data.network_issues:
-                self.matrix.network_issue_indicator()
+                # Parse situation data
+                situation = self._parse_situation(cached_overview)
 
-            if self.data.newUpdate and not self.data.config.clock_hide_indicators:
-                self.matrix.update_indicator()
+                # Clear and render
+                self.matrix.clear()
+                self._draw_live(game, situation)
 
-            # Increment counter for SOG alternation
-            self.alternate_counter += 1
-            self.data._live_scoreboard_counter = self.alternate_counter
+                # Show indicators
+                if self.data.network_issues:
+                    self.matrix.network_issue_indicator()
+                if self.data.newUpdate and not self.data.config.clock_hide_indicators:
+                    self.matrix.update_indicator()
 
-            # Check if we should show stats banner
-            self._banner_counter += 1
-            self.data._stats_banner_counter = self._banner_counter  # Persist across re-instantiations
-            debug.debug(f"LiveScoreboardBoard: Banner counter {self._banner_counter}/{self.stats_banner_frequency}")
-            if (self.stats_banner_enabled and
-                self._banner_counter >= self.stats_banner_frequency):
-                debug.debug("LiveScoreboardBoard: Triggering stats banner")
-                self._banner_counter = 0
-                self.data._stats_banner_counter = 0
-                self._show_stats_banner(game, situation)
+                # Check stats banner
+                self._banner_counter += 1
+                self.data._stats_banner_counter = self._banner_counter
 
-            # Wait for next refresh
-            debug.debug(f"LiveScoreboardBoard: Waiting {self.display_duration} seconds")
-            self.sleepEvent.wait(self.display_duration)
+                refresh_num = int(elapsed_time / self.refresh_interval) + 1
+                debug.debug(f"LiveScoreboardBoard: Refresh {refresh_num}, "
+                           f"Banner {self._banner_counter}/{self.stats_banner_frequency}")
 
-        except Exception as e:
-            debug.error(f"LiveScoreboardBoard: Error rendering scoreboard: {e}")
-            import traceback
-            traceback.print_exc()
+                if (self.stats_banner_enabled and
+                    self._banner_counter >= self.stats_banner_frequency):
+                    debug.debug("LiveScoreboardBoard: Triggering stats banner")
+                    self._banner_counter = 0
+                    self.data._stats_banner_counter = 0
+                    self._show_stats_banner(game, situation)
+
+                # Wait for next refresh
+                self.sleepEvent.wait(self.refresh_interval)
+                elapsed_time += self.refresh_interval
+
+            except Exception as e:
+                debug.error(f"LiveScoreboardBoard: Error during render: {e}")
+                import traceback
+                traceback.print_exc()
+                self.sleepEvent.wait(self.refresh_interval)
+                elapsed_time += self.refresh_interval
+
+        debug.debug(f"LiveScoreboardBoard: Completed after {elapsed_time}s")
 
     def _parse_situation(self, overview: dict) -> dict:
         """Parse game situation (power plays, skater counts) from raw overview."""
@@ -193,24 +207,17 @@ class LiveScoreboardBoard(BoardBase):
         clock = game.time_remaining or "20:00"
         score = f"{game.score.away}-{game.score.home}"
 
-        # Determine if we should show SOG based on counter
-        show_SOG = (self.alternate_counter % self.sog_display_frequency == 0)
+        # Draw the period and clock
+        self.matrix.draw_text_layout(
+            self.layout.period,
+            period,
+        )
+        self.matrix.draw_text_layout(
+            self.layout.clock,
+            clock
+        )
 
-        if show_SOG:
-            debug.debug(f"LiveScoreboardBoard: Showing SOG (counter: {self.alternate_counter})")
-            self._draw_SOG(game)
-        else:
-            # Draw the period and clock
-            self.matrix.draw_text_layout(
-                self.layout.period,
-                period,
-            )
-            self.matrix.draw_text_layout(
-                self.layout.clock,
-                clock
-            )
-
-        # Always draw the score
+        # Draw the score
         self.matrix.draw_text_layout(
             self.layout.score,
             score
@@ -226,19 +233,6 @@ class LiveScoreboardBoard(BoardBase):
             else:
                 debug.debug("Drawing power play indicators")
                 self._draw_power_play_indicators(situation)
-
-    def _draw_SOG(self, game: Game):
-        """Draw the shots on goal display."""
-        SOG = f"{game.sog.away}-{game.sog.home}"
-
-        self.matrix.draw_text_layout(
-            self.layout.SOG_label,
-            "SHOTS"
-        )
-        self.matrix.draw_text_layout(
-            self.layout.SOG,
-            SOG
-        )
 
     def _draw_power_play_details(self, game: Game, situation: dict):
         """Draw detailed power play information."""

@@ -435,10 +435,11 @@ class Game:
 
         # Parse period if in progress
         period = None
-        if 'period' in data and 'periodDescriptor' in data:
+        period_desc = data.get('periodDescriptor')
+        if period_desc:
             period = GamePeriod(
-                number=data['period'],
-                type=data['periodDescriptor'].get('periodType', 'REG')
+                number=period_desc.get('number', data.get('period', 1)),
+                type=period_desc.get('periodType', 'REG')
             )
 
         return cls(

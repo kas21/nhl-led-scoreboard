@@ -15,8 +15,9 @@ from PIL import Image
 
 from boards.base_board import BoardBase
 from nhl_api.models import Game
-from nhl_api.workers import LiveGameWorker
+from nhl_api.workers import LiveGameWorker, GameStoryWorker
 from renderer.logos import LogoRenderer
+from renderer.stats_banner import StatsBanner
 from utils import get_file
 
 debug = logging.getLogger("scoreboard")
@@ -52,6 +53,16 @@ class LiveScoreboardBoard(BoardBase):
         # Logo renderers - will be initialized when we know team abbrevs
         self.home_logo_renderer = None
         self.away_logo_renderer = None
+
+        # Stats banner configuration
+        self.stats_banner_enabled = self.get_config_value('stats_banner_enabled', True)
+        self.stats_banner_frequency = self.get_config_value('stats_banner_frequency', 5)
+        self.stats_banner_stat_duration = self.get_config_value('stats_banner_stat_duration', 2.0)
+        self.stats_banner_animation_duration = self.get_config_value('stats_banner_animation_duration', 0.3)
+        self.stats_banner_categories = self.get_config_value('stats_banner_categories', ['shots', 'hits', 'faceoff'])
+        # Persist banner counter across board re-instantiations (same pattern as alternate_counter)
+        self._banner_counter = getattr(data, '_stats_banner_counter', 0)
+        self._stats_banner = None  # Lazy initialized
 
     def render(self):
         """Render the live scoreboard display."""
@@ -108,6 +119,17 @@ class LiveScoreboardBoard(BoardBase):
             # Increment counter for SOG alternation
             self.alternate_counter += 1
             self.data._live_scoreboard_counter = self.alternate_counter
+
+            # Check if we should show stats banner
+            self._banner_counter += 1
+            self.data._stats_banner_counter = self._banner_counter  # Persist across re-instantiations
+            debug.debug(f"LiveScoreboardBoard: Banner counter {self._banner_counter}/{self.stats_banner_frequency}")
+            if (self.stats_banner_enabled and
+                self._banner_counter >= self.stats_banner_frequency):
+                debug.debug("LiveScoreboardBoard: Triggering stats banner")
+                self._banner_counter = 0
+                self.data._stats_banner_counter = 0
+                self._show_stats_banner(game, situation)
 
             # Wait for next refresh
             debug.debug(f"LiveScoreboardBoard: Waiting {self.display_duration} seconds")
@@ -272,6 +294,43 @@ class LiveScoreboardBoard(BoardBase):
             )
 
         self.matrix.render()
+
+    def _show_stats_banner(self, game: Game, situation: dict):
+        """Display the animated stats banner overlay."""
+        # Skip if power play is active (conflicts with bottom indicators)
+        if situation['away_powerplay'] or situation['home_powerplay']:
+            debug.debug("StatsBanner: Skipping due to active power play")
+            return
+
+        # Get stats from GameStoryWorker
+        stats = GameStoryWorker.get_game_stats(game.id)
+        if not stats:
+            debug.debug("StatsBanner: No stats available yet")
+            return
+
+        # Initialize banner if needed
+        if not self._stats_banner:
+            self._stats_banner = StatsBanner(
+                self.matrix,
+                self.team_colors,
+                self.data.config.layout.font
+            )
+
+        # Capture current scoreboard state
+        base_image = self.matrix.image.copy()
+
+        # Run banner animation sequence
+        self._stats_banner.show_stats_banner(
+            stats=stats,
+            home_team_id=game.home_team.id,
+            away_team_id=game.away_team.id,
+            base_image=base_image,
+            sleep_func=self.sleepEvent.wait,
+            is_interrupted=self.sleepEvent.is_set,
+            stat_duration=self.stats_banner_stat_duration,
+            animation_duration=self.stats_banner_animation_duration,
+            categories=self.stats_banner_categories
+        )
 
     def _draw_power_play_indicators(self, situation: dict):
         """Draw simple power play indicators (colored lines)."""

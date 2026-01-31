@@ -1,3 +1,8 @@
 {
-  "duration": 10
+  "duration": 10,
+  "stats_banner_enabled": true,
+  "stats_banner_frequency": 2,
+  "stats_banner_stat_duration": 2.0,
+  "stats_banner_animation_duration": 0.3,
+  "stats_banner_categories": ["shots", "hits", "faceoff"]
 }

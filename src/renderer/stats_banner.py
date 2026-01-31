@@ -186,7 +186,8 @@ class StatsBanner:
             self._draw_frame(
                 base_image, current_y,
                 stat_data, home_color, away_color,
-                home_outline, away_outline, home_text, away_text
+                home_outline, away_outline, home_text, away_text,
+                draw_content=False  # Don't draw stats during slide - animate them after
             )
 
             sleep_func(frame_delay)
@@ -201,7 +202,8 @@ class StatsBanner:
         home_outline: Optional[Color],
         away_outline: Optional[Color],
         home_text: Color,
-        away_text: Color
+        away_text: Color,
+        draw_content: bool = True
     ):
         """Draw a single frame with the banner at the given Y position."""
         # Restore base scoreboard image
@@ -210,13 +212,14 @@ class StatsBanner:
         # Draw gradient background
         self._draw_banner_background(banner_y)
 
-        # Draw the stat content
-        self._draw_stat_content(
-            banner_y, stat_data,
-            home_color, away_color,
-            home_outline, away_outline,
-            home_text, away_text
-        )
+        # Only draw stat content if requested (not during slide animation)
+        if draw_content:
+            self._draw_stat_content(
+                banner_y, stat_data,
+                home_color, away_color,
+                home_outline, away_outline,
+                home_text, away_text
+            )
 
         self.matrix.render()
 

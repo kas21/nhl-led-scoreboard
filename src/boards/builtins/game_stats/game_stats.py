@@ -144,9 +144,9 @@ class GameStatsBoard(BoardBase):
         away_color: Tuple[int, int, int]
     ):
         """Render a comparison stat as a labeled split bar with team header."""
-        # Calculate percentage split
+        # Calculate percentage split (away on left)
         total = home_val + away_val
-        left_pct = (home_val / total * 100) if total > 0 else 50
+        left_pct = (away_val / total * 100) if total > 0 else 50
 
         # Get outline and text colors for dark teams
         home_outline = self._get_outline_for_color(home_color)
@@ -193,20 +193,20 @@ class GameStatsBoard(BoardBase):
                 sleep_func=self._animation_sleep,
                 width=bar_width,
                 height=bar_height,
-                left_color=home_color,
-                right_color=away_color,
+                left_color=away_color,
+                right_color=home_color,
                 duration=0.5,
                 frames=15,
                 title=label,
-                left_label=str(home_val),
-                right_label=str(away_val),
+                left_label=str(away_val),
+                right_label=str(home_val),
                 font=font,
-                left_label_color=home_text,
-                right_label_color=away_text,
+                left_label_color=away_text,
+                right_label_color=home_text,
                 animation="fill",
                 pre_draw=draw_header,
-                left_outline_color=home_outline,
-                right_outline_color=away_outline
+                left_outline_color=away_outline,
+                right_outline_color=home_outline
             )
         else:
             self.chart.draw_split_bar(
@@ -214,16 +214,16 @@ class GameStatsBoard(BoardBase):
                 left_pct=left_pct,
                 width=bar_width,
                 height=bar_height,
-                left_color=home_color,
-                right_color=away_color,
+                left_color=away_color,
+                right_color=home_color,
                 title=label,
-                left_label=str(home_val),
-                right_label=str(away_val),
+                left_label=str(away_val),
+                right_label=str(home_val),
                 font=font,
-                left_label_color=home_text,
-                right_label_color=away_text,
-                left_outline_color=home_outline,
-                right_outline_color=away_outline
+                left_label_color=away_text,
+                right_label_color=home_text,
+                left_outline_color=away_outline,
+                right_outline_color=home_outline
             )
 
     def _render_faceoff_stat(
@@ -276,43 +276,43 @@ class GameStatsBoard(BoardBase):
         if self.animate_bars:
             self.chart.animate_split_bar(
                 position=(bar_x, y_pos),
-                left_pct=home_pct,
+                left_pct=away_pct,
                 render_callback=self.matrix.render,
                 clear_callback=self.matrix.clear,
                 sleep_func=self._animation_sleep,
                 width=bar_width,
                 height=bar_height,
-                left_color=home_color,
-                right_color=away_color,
+                left_color=away_color,
+                right_color=home_color,
                 duration=0.5,
                 frames=15,
                 title="FACEOFF %",
-                left_label=home_label,
-                right_label=away_label,
+                left_label=away_label,
+                right_label=home_label,
                 font=font,
-                left_label_color=home_text,
-                right_label_color=away_text,
+                left_label_color=away_text,
+                right_label_color=home_text,
                 animation="fill",
                 pre_draw=draw_header,
-                left_outline_color=home_outline,
-                right_outline_color=away_outline
+                left_outline_color=away_outline,
+                right_outline_color=home_outline
             )
         else:
             self.chart.draw_split_bar(
                 position=(bar_x, y_pos),
-                left_pct=home_pct,
+                left_pct=away_pct,
                 width=bar_width,
                 height=bar_height,
-                left_color=home_color,
-                right_color=away_color,
+                left_color=away_color,
+                right_color=home_color,
                 title="FACEOFF %",
-                left_label=home_label,
-                right_label=away_label,
+                left_label=away_label,
+                right_label=home_label,
                 font=font,
-                left_label_color=home_text,
-                right_label_color=away_text,
-                left_outline_color=home_outline,
-                right_outline_color=away_outline
+                left_label_color=away_text,
+                right_label_color=home_text,
+                left_outline_color=away_outline,
+                right_outline_color=home_outline
             )
 
     def _render_combined_stats(
@@ -336,21 +336,21 @@ class GameStatsBoard(BoardBase):
         home_shots, away_shots = stats.home_stats.shots, stats.away_stats.shots
         total_shots = home_shots + away_shots
         stat_defs.append((
-            'SHOTS', str(home_shots), str(away_shots),
-            (home_shots / total_shots * 100) if total_shots > 0 else 50
+            'SHOTS', str(away_shots), str(home_shots),
+            (away_shots / total_shots * 100) if total_shots > 0 else 50
         ))
 
         home_hits, away_hits = stats.home_stats.hits, stats.away_stats.hits
         total_hits = home_hits + away_hits
         stat_defs.append((
-            'HITS', str(home_hits), str(away_hits),
-            (home_hits / total_hits * 100) if total_hits > 0 else 50
+            'HITS', str(away_hits), str(home_hits),
+            (away_hits / total_hits * 100) if total_hits > 0 else 50
         ))
 
         home_fo = stats.home_stats.faceoff_pct
         stat_defs.append((
-            'FACEOFF %', f"{home_fo:.0f}%", f"{100 - home_fo:.0f}%",
-            home_fo
+            'FACEOFF %', f"{100 - home_fo:.0f}%", f"{home_fo:.0f}%",
+            100 - home_fo
         ))
 
         # Layout based on display size
@@ -395,17 +395,17 @@ class GameStatsBoard(BoardBase):
                 left_pct=left_pct,
                 width=bar_width,
                 height=bar_height,
-                left_color=home_color,
-                right_color=away_color,
+                left_color=away_color,
+                right_color=home_color,
                 title=title,
                 left_label=left_label,
                 right_label=right_label,
                 font=font,
-                left_label_color=home_text,
-                right_label_color=away_text,
+                left_label_color=away_text,
+                right_label_color=home_text,
                 label_spacing=label_spacing,
-                left_outline_color=home_outline,
-                right_outline_color=away_outline
+                left_outline_color=away_outline,
+                right_outline_color=home_outline
             )
 
         if self.animate_bars:
@@ -431,21 +431,21 @@ class GameStatsBoard(BoardBase):
                     sleep_func=self._animation_sleep,
                     width=bar_width,
                     height=bar_height,
-                    left_color=home_color,
-                    right_color=away_color,
+                    left_color=away_color,
+                    right_color=home_color,
                     duration=0.5,
                     frames=15,
                     title=title,
                     left_label=left_label,
                     right_label=right_label,
                     font=font,
-                    left_label_color=home_text,
-                    right_label_color=away_text,
+                    left_label_color=away_text,
+                    right_label_color=home_text,
                     label_spacing=label_spacing,
                     animation="fill",
                     pre_draw=make_pre_draw(stat_idx),
-                    left_outline_color=home_outline,
-                    right_outline_color=away_outline
+                    left_outline_color=away_outline,
+                    right_outline_color=home_outline
                 )
         else:
             for idx in range(len(stat_defs)):
@@ -505,8 +505,8 @@ class GameStatsBoard(BoardBase):
 
         # Position content below header
         y_title = header_height + (2 if self.display_width >= 128 else 1)
-        y_home = y_title + (14 if self.display_width >= 128 else 8)
-        y_away = y_home + (14 if self.display_width >= 128 else 10)
+        y_away = y_title + (14 if self.display_width >= 128 else 8)
+        y_home = y_away + (14 if self.display_width >= 128 else 10)
 
         # Draw title (centered)
         title_text = "POWER PLAY"
@@ -517,22 +517,7 @@ class GameStatsBoard(BoardBase):
             (title_x, y_title), title_text, font, fill=(255, 255, 255)
         )
 
-        # Draw home PP (use team abbreviation as label)
-        self.chart.draw_power_play_stat(
-            position=(content_x, y_home),
-            label=stats.home_team_abbrev,
-            goals=home_pp.power_play_goals,
-            attempts=home_pp.power_play_opportunities,
-            font=font,
-            label_width=label_width,
-            block_width=block_width,
-            block_height=block_height,
-            filled_color=home_color,
-            text_color=home_text,
-            outline_color=home_outline
-        )
-
-        # Draw away PP (use team abbreviation as label)
+        # Draw away PP (use team abbreviation as label) - away on top
         self.chart.draw_power_play_stat(
             position=(content_x, y_away),
             label=stats.away_team_abbrev,
@@ -545,6 +530,21 @@ class GameStatsBoard(BoardBase):
             filled_color=away_color,
             text_color=away_text,
             outline_color=away_outline
+        )
+
+        # Draw home PP (use team abbreviation as label) - home on bottom
+        self.chart.draw_power_play_stat(
+            position=(content_x, y_home),
+            label=stats.home_team_abbrev,
+            goals=home_pp.power_play_goals,
+            attempts=home_pp.power_play_opportunities,
+            font=font,
+            label_width=label_width,
+            block_width=block_width,
+            block_height=block_height,
+            filled_color=home_color,
+            text_color=home_text,
+            outline_color=home_outline
         )
 
     def _get_stat_values(self, stats: GameStoryStats, category: str) -> Tuple[int, int]:
@@ -607,7 +607,7 @@ class GameStatsBoard(BoardBase):
         """
         Draw team name pills and game status at the top of the display.
 
-        Layout: [HOME]  STATUS  [AWAY]
+        Layout: [AWAY]  STATUS  [HOME]
         Each team name is drawn as text on a colored pill (rectangle background).
 
         Returns:
@@ -632,25 +632,25 @@ class GameStatsBoard(BoardBase):
         pill_h = text_h + pad_y * 2
         y = 0
 
-        # Home team pill (left-aligned with bar area)
-        home_pill_w = home_text_w + pad_x * 2
+        # Away team pill (left-aligned with bar area)
+        away_pill_w = away_text_w + pad_x * 2
         self.matrix.draw_rectangle(
-            (bar_x, y), (home_pill_w, pill_h), fill=home_color
+            (bar_x, y), (away_pill_w, pill_h), fill=away_color
         )
         self.matrix.draw_text(
             (bar_x + pad_x, y + pad_y),
-            stats.home_team_abbrev, font, fill=home_text_color
+            stats.away_team_abbrev, font, fill=away_text_color
         )
 
-        # Away team pill (right-aligned with bar area)
-        away_pill_w = away_text_w + pad_x * 2
-        away_pill_x = bar_x + bar_width - away_pill_w
+        # Home team pill (right-aligned with bar area)
+        home_pill_w = home_text_w + pad_x * 2
+        home_pill_x = bar_x + bar_width - home_pill_w
         self.matrix.draw_rectangle(
-            (away_pill_x, y), (away_pill_w, pill_h), fill=away_color
+            (home_pill_x, y), (home_pill_w, pill_h), fill=home_color
         )
         self.matrix.draw_text(
-            (away_pill_x + pad_x, y + pad_y),
-            stats.away_team_abbrev, font, fill=away_text_color
+            (home_pill_x + pad_x, y + pad_y),
+            stats.home_team_abbrev, font, fill=home_text_color
         )
 
         # Game status text (centered in bar area)

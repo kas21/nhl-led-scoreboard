@@ -378,6 +378,17 @@ class GamePeriod:
     def is_shootout(self) -> bool:
         return self.type == "SO"
 
+    @property
+    def ordinal(self) -> str:
+        """Return ordinal representation of period (1st, 2nd, 3rd, OT, SO)"""
+        if self.type == "SO":
+            return "SO"
+        if self.type == "OT":
+            return "OT"
+        # Regular period - convert to ordinal
+        ordinals = {1: "1st", 2: "2nd", 3: "3rd"}
+        return ordinals.get(self.number, f"{self.number}th")
+
 
 @dataclass
 class Game:
